@@ -7,15 +7,14 @@ const pngToIco = typeof pngToIcoModule === 'function' ? pngToIcoModule : (pngToI
 const svgLogo = `
 <svg width="512" height="512" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="sphereGrad" x1="0.15" y1="0.1" x2="0.85" y2="0.9">
-      <stop offset="0%" stopColor="#38bdf8" />
-      <stop offset="40%" stopColor="#6366f1" />
-      <stop offset="100%" stopColor="#a855f7" />
+    <linearGradient id="sphereGrad" x1="0.15" y1="0.15" x2="0.85" y2="0.85">
+      <stop offset="0%" stopColor="#00C0FF" />
+      <stop offset="50%" stopColor="#005BFF" />
+      <stop offset="100%" stopColor="#001B93" />
     </linearGradient>
     <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#c084fc" />
-      <stop offset="50%" stopColor="#6366f1" />
-      <stop offset="100%" stopColor="#06b6d4" />
+      <stop offset="0%" stopColor="#2E2F37" />
+      <stop offset="100%" stopColor="#131317" />
     </linearGradient>
   </defs>
 
