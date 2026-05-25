@@ -1,6 +1,10 @@
 name: Build and Release Overdesk Electron App
 
 on:
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch: # Allows manual trigger from the GitHub Actions browser UI
 
 permissions:
