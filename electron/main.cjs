@@ -1,0 +1,208 @@
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require('electron');
+const path = require('path');
+
+// Configurable Production Hosted App URL for Silent Updates in Electron (Option 2)
+// This enables automatic hot updates to the frontend without requiring end-users to reinstall the app.
+const PRODUCTION_REMOTE_URL = 'https://ais-pre-ygovsfhsdgrmphae242d6v-579262669550.europe-west2.run.app';
+
+let mainWindow;
+let tray = null;
+
+function createTray() {
+  const iconPath = path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+  try {
+    tray = new Tray(iconPath);
+    const contextMenu = Menu.buildFromTemplate([
+      { 
+        label: 'Show Overdesk', 
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        } 
+      },
+      { 
+        label: 'Hide to Tray', 
+        click: () => {
+          if (mainWindow) mainWindow.hide();
+        } 
+      },
+      { type: 'separator' },
+      { 
+        label: 'Quit', 
+        click: () => {
+          app.isQuitting = true;
+          app.quit();
+        } 
+      }
+    ]);
+    
+    tray.setToolTip('Overdesk - Floating Assistant');
+    tray.setContextMenu(contextMenu);
+    
+    // Toggle on double-click or single-click, safely restoring if minimized
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        } else if (mainWindow.isVisible()) {
+          mainWindow.hide();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Failed to create tray:', err);
+  }
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 380,
+    height: 520,
+    minWidth: 240,
+    maxWidth: 600,
+    minHeight: 280,
+    maxHeight: 1000,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    hasShadow: false, // Disabling native shadow avoids Windows drop shadow bounding boxes clipping the transparent rounded card
+    icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
+  });
+
+  // Enable always-on-top over other full-screen apps on macOS if needed
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+
+  // Load the application
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    // In production, attempt to load the remote hosted URL first for silent updates (Option 2)
+    // If the server is unreachable, offline, or returns a 404/503 (e.g., container scaled down), we fallback to local bundled assets.
+    let fallbackTriggered = false;
+
+    const triggerLocalFallback = (reason) => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      console.warn(`[Auto-Update Fallback] Loading local index.html. Reason: ${reason}`);
+      mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    };
+
+    // Standard load failure listener (e.g. TCP/DNS connection errors)
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      if (fallbackTriggered) return;
+      if (validatedURL && (validatedURL.startsWith(PRODUCTION_REMOTE_URL) || validatedURL === 'about:blank')) {
+        triggerLocalFallback(`Page load failed: ${errorDescription} (${errorCode})`);
+      }
+    });
+
+    // Preflight health check to verify the remote URL is alive & healthy (status code 200)
+    const checkRemoteHealthy = async (url) => {
+      if (typeof fetch === 'undefined') return false;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second timeout
+
+        const response = await fetch(url, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        clearTimeout(timeoutId);
+        
+        // Ensure we got a successful response (status code 200-299)
+        return response.ok;
+      } catch (err) {
+        return false;
+      }
+    };
+
+    checkRemoteHealthy(PRODUCTION_REMOTE_URL).then((isHealthy) => {
+      if (fallbackTriggered) return;
+
+      if (isHealthy) {
+        console.log('[Auto-Update] Remote server is healthy. Checking for silent updates...');
+        mainWindow.loadURL(PRODUCTION_REMOTE_URL).catch((err) => {
+          triggerLocalFallback(`loadURL failed: ${err.message || err}`);
+        });
+      } else {
+        triggerLocalFallback('Remote health check failed (server offline, scaled down, or returned HTTP error)');
+      }
+    });
+  }
+
+  // Intercept open links to boot default system web browser (e.g. Gumroad purchase pages)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Intercept close events to hide instead of destroying
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  createTray();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+// Window controls IPC handling
+ipcMain.on('window-minimize', () => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window-close', () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+});
+
+ipcMain.on('window-set-always-on-top', (event, flag) => {
+  if (mainWindow) {
+    mainWindow.setAlwaysOnTop(flag, 'screen-saver');
+  }
+});
+
+// Dynamic resizing handler to fit rounded card contents & drop shadow Glow perfectly
+ipcMain.on('window-resize', (event, width, height) => {
+  if (mainWindow) {
+    const w = Math.max(240, Math.min(600, Math.round(width)));
+    const h = Math.max(280, Math.min(1000, Math.round(height)));
+    mainWindow.setSize(w, h);
+  }
+});

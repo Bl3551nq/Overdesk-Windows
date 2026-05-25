@@ -1,0 +1,60 @@
+name: Build and Release Overdesk Electron App
+
+on:
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions browser UI
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Electron App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest] # Focus on Windows EXE first as requested. Can add macos-latest if needed.
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Assets and Package Electron App
+        run: npm run electron:pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows App Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Overdesk-Windows-Builds
+          path: dist-electron/*.exe
+
+      - name: Create or Update Release and Upload EXE
+        shell: pwsh
+        run: |
+          # Safely remove existing release and remote tag using gh CLI (bypassing raw git-push prompts)
+          gh release delete v1.0.0-build --cleanup-tag --yes 2>$null || true
+
+          # Write release notes to a file on the fly (prevents string escaping/quoting issues in PowerShell)
+          @'
+          Overdesk Floating Assistant - Windows Releases.
+
+          - **Overdesk Setup 1.0.0.exe**: Standard Windows installer (recommended). It installs the application permanently, adds a Start Menu shortcut, and places a desktop shortcut so the app stays on your system!
+          - **Overdesk 1.0.0.exe**: Portable single-file version. Run directly without installation.
+          '@ | Out-File -FilePath release-notes.txt -Encoding utf8
+
+          # Create release and upload the packaged executables
+          gh release create v1.0.0-build dist-electron/*.exe --title "Overdesk Floating App Release" --notes-file release-notes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
