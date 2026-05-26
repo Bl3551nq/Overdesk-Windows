@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
@@ -226,6 +226,37 @@ ipcMain.on('window-set-minimized-state', (event, minimized) => {
       mainWindow.setSize(380, 520);
     }
   }
+});
+
+let dragStartCursor = null;
+let dragStartWinPos = null;
+let dragInterval = null;
+
+ipcMain.on('window-drag-start', (event) => {
+  if (mainWindow) {
+    const cursor = screen.getCursorScreenPoint();
+    const pos = mainWindow.getPosition();
+    dragStartCursor = cursor;
+    dragStartWinPos = { x: pos[0], y: pos[1] };
+    
+    clearInterval(dragInterval);
+    dragInterval = setInterval(() => {
+      if (!dragStartCursor || !dragStartWinPos || mainWindow.isDestroyed()) {
+        clearInterval(dragInterval);
+        return;
+      }
+      const currentCursor = screen.getCursorScreenPoint();
+      const dx = currentCursor.x - dragStartCursor.x;
+      const dy = currentCursor.y - dragStartCursor.y;
+      mainWindow.setPosition(dragStartWinPos.x + dx, dragStartWinPos.y + dy);
+    }, 16);
+  }
+});
+
+ipcMain.on('window-drag-end', () => {
+  clearInterval(dragInterval);
+  dragStartCursor = null;
+  dragStartWinPos = null;
 });
 
 // --- Auto-Updater Setup for Windows/macOS Binary Upgrades ---

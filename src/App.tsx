@@ -712,6 +712,13 @@ export default function App() {
       x: e.clientX - miniX,
       y: e.clientY - miniY,
     };
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.startWindowDrag) {
+          (window as any).electronAPI.startWindowDrag();
+        }
+      } catch (err) {}
+    }
   };
 
   const handleMiniPointerMove = (e: React.PointerEvent) => {
@@ -721,12 +728,21 @@ export default function App() {
     if (Math.abs(dx - miniX) > 4 || Math.abs(dy - miniY) > 4) {
       miniDidMove.current = true;
     }
-    setMiniX(Math.max(0, Math.min(window.innerWidth - 64, dx)));
-    setMiniY(Math.max(0, Math.min(window.innerHeight - 64, dy)));
+    if (!isElectron) {
+      setMiniX(Math.max(0, Math.min(window.innerWidth - 64, dx)));
+      setMiniY(Math.max(0, Math.min(window.innerHeight - 64, dy)));
+    }
   };
 
   const handleMiniPointerUp = () => {
     setIsDraggingMini(false);
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.endWindowDrag) {
+          (window as any).electronAPI.endWindowDrag();
+        }
+      } catch (err) {}
+    }
     if (!miniDidMove.current) {
       setIsMinimized(false);
     }
@@ -863,32 +879,35 @@ export default function App() {
       ) : (
         <>
           {/* Mini floating launcher icon when minimized */}
-      <AnimatePresence>
+       <AnimatePresence>
         {isMinimized && (
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="mini-icon-shell flex items-center justify-center"
+            className="mini-icon-shell flex items-center justify-center cursor-grab select-none active:cursor-grabbing"
             style={isElectron ? {
               left: 0,
               top: 0,
               width: '80px',
               height: '80px',
               position: 'absolute',
-              WebkitAppRegion: 'drag',
             } : {
               left: miniX,
               top: miniY,
             }}
-            onPointerDown={isElectron ? undefined : handleMiniPointerDown}
-            onPointerMove={isElectron ? undefined : handleMiniPointerMove}
-            onPointerUp={isElectron ? undefined : handleMiniPointerUp}
+            onPointerDown={handleMiniPointerDown}
+            onPointerMove={handleMiniPointerMove}
+            onPointerUp={handleMiniPointerUp}
           >
             <div
-              onClick={isElectron ? () => setIsMinimized(false) : undefined}
-              className="cursor-pointer"
-              style={isElectron ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}
+              className="transition-all duration-300 hover:scale-[1.08] active:scale-[0.96]"
+              style={{
+                filter: 'drop-shadow(0 0 16px rgba(124, 58, 237, 0.75)) drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
               <OverdeskLogo size={54} />
             </div>
