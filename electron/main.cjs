@@ -217,8 +217,8 @@ ipcMain.on('window-set-ignore-mouse-events', (event, ignore, options) => {
 ipcMain.on('window-set-minimized-state', (event, minimized) => {
   if (mainWindow) {
     if (minimized) {
-      mainWindow.setMinimumSize(48, 48);
-      mainWindow.setSize(80, 80);
+      mainWindow.setMinimumSize(140, 140);
+      mainWindow.setSize(140, 140);
       mainWindow.setResizable(false);
     } else {
       mainWindow.setResizable(true);
@@ -228,35 +228,11 @@ ipcMain.on('window-set-minimized-state', (event, minimized) => {
   }
 });
 
-let dragStartCursor = null;
-let dragStartWinPos = null;
-let dragInterval = null;
-
-ipcMain.on('window-drag-start', (event) => {
+ipcMain.on('window-move-by-delta', (event, dx, dy) => {
   if (mainWindow) {
-    const cursor = screen.getCursorScreenPoint();
     const pos = mainWindow.getPosition();
-    dragStartCursor = cursor;
-    dragStartWinPos = { x: pos[0], y: pos[1] };
-    
-    clearInterval(dragInterval);
-    dragInterval = setInterval(() => {
-      if (!dragStartCursor || !dragStartWinPos || mainWindow.isDestroyed()) {
-        clearInterval(dragInterval);
-        return;
-      }
-      const currentCursor = screen.getCursorScreenPoint();
-      const dx = currentCursor.x - dragStartCursor.x;
-      const dy = currentCursor.y - dragStartCursor.y;
-      mainWindow.setPosition(dragStartWinPos.x + dx, dragStartWinPos.y + dy);
-    }, 16);
+    mainWindow.setPosition(Math.round(pos[0] + dx), Math.round(pos[1] + dy));
   }
-});
-
-ipcMain.on('window-drag-end', () => {
-  clearInterval(dragInterval);
-  dragStartCursor = null;
-  dragStartWinPos = null;
 });
 
 // --- Auto-Updater Setup for Windows/macOS Binary Upgrades ---

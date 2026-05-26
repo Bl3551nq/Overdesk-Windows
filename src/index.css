@@ -339,7 +339,9 @@ body {
 
 /* Clear shadow for the license page and its wrapper background */
 .license-gate-wrapper,
-.license-gate-card {
+.license-gate-card,
+.license-gate-card *,
+.license-gate-wrapper * {
   box-shadow: none !important;
   text-shadow: none !important;
   filter: none !important;

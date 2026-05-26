@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resizeWindow: (width, height) => ipcRenderer.send('window-resize', width, height),
   setIgnoreMouseEvents: (ignore, options) => ipcRenderer.send('window-set-ignore-mouse-events', ignore, options),
   setMinimizedState: (minimized) => ipcRenderer.send('window-set-minimized-state', minimized),
+  moveWindowByDelta: (dx, dy) => ipcRenderer.send('window-move-by-delta', dx, dy),
   startWindowDrag: () => ipcRenderer.send('window-drag-start'),
   endWindowDrag: () => ipcRenderer.send('window-drag-end'),
   onUpdaterMessage: (callback) => {

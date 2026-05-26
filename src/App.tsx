@@ -709,40 +709,49 @@ export default function App() {
     setIsDraggingMini(true);
     miniDidMove.current = false;
     miniDragOffset.current = {
-      x: e.clientX - miniX,
-      y: e.clientY - miniY,
+      x: e.screenX,
+      y: e.screenY,
     };
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.startWindowDrag) {
-          (window as any).electronAPI.startWindowDrag();
-        }
-      } catch (err) {}
-    }
   };
 
   const handleMiniPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingMini) return;
-    const dx = e.clientX - miniDragOffset.current.x;
-    const dy = e.clientY - miniDragOffset.current.y;
-    if (Math.abs(dx - miniX) > 4 || Math.abs(dy - miniY) > 4) {
+    
+    // Calculate the movement delta relative to the previous coordinate position
+    const dx = e.screenX - miniDragOffset.current.x;
+    const dy = e.screenY - miniDragOffset.current.y;
+    
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
       miniDidMove.current = true;
     }
-    if (!isElectron) {
-      setMiniX(Math.max(0, Math.min(window.innerWidth - 64, dx)));
-      setMiniY(Math.max(0, Math.min(window.innerHeight - 64, dy)));
+    
+    if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+      if (isElectron) {
+        try {
+          if ((window as any).electronAPI?.moveWindowByDelta) {
+            (window as any).electronAPI.moveWindowByDelta(dx, dy);
+          }
+        } catch (err) {}
+      } else {
+        setMiniX((prev) => Math.max(0, Math.min(window.innerWidth - 120, prev + dx)));
+        setMiniY((prev) => Math.max(0, Math.min(window.innerHeight - 120, prev + dy)));
+      }
+      
+      // Pivot reference coordinate to current screen position
+      miniDragOffset.current = {
+        x: e.screenX,
+        y: e.screenY,
+      };
     }
   };
 
-  const handleMiniPointerUp = () => {
+  const handleMiniPointerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     setIsDraggingMini(false);
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.endWindowDrag) {
-          (window as any).electronAPI.endWindowDrag();
-        }
-      } catch (err) {}
-    }
+    
+    // Only unminimize if we did NOT drag the icon (clicked static)
     if (!miniDidMove.current) {
       setIsMinimized(false);
     }
@@ -889,12 +898,14 @@ export default function App() {
             style={isElectron ? {
               left: 0,
               top: 0,
-              width: '80px',
-              height: '80px',
+              width: '140px',
+              height: '140px',
               position: 'absolute',
             } : {
               left: miniX,
               top: miniY,
+              width: '140px',
+              height: '140px',
             }}
             onPointerDown={handleMiniPointerDown}
             onPointerMove={handleMiniPointerMove}
