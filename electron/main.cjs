@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 // Configurable Production Hosted App URL for Silent Updates in Electron (Option 2)
@@ -212,3 +213,77 @@ ipcMain.on('window-set-ignore-mouse-events', (event, ignore, options) => {
     mainWindow.setIgnoreMouseEvents(ignore, options);
   }
 });
+
+ipcMain.on('window-set-minimized-state', (event, minimized) => {
+  if (mainWindow) {
+    if (minimized) {
+      mainWindow.setMinimumSize(48, 48);
+      mainWindow.setSize(80, 80);
+      mainWindow.setResizable(false);
+    } else {
+      mainWindow.setResizable(true);
+      mainWindow.setMinimumSize(240, 280);
+      mainWindow.setSize(380, 520);
+    }
+  }
+});
+
+// --- Auto-Updater Setup for Windows/macOS Binary Upgrades ---
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+autoUpdater.on('checking-for-update', () => {
+  console.log('[Auto-Updater] Checking for updates...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('[Auto-Updater] Update available:', info);
+  if (mainWindow) {
+    mainWindow.webContents.send('updater-message', `New version available: v${info.version || ''}. Downloading...`);
+  }
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('[Auto-Updater] No new updates found:', info);
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('[Auto-Updater] Error checking for updates:', err);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('updater-message', `Downloading update: ${progressObj.percent.toFixed(0)}%`);
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[Auto-Updater] Update downloaded successfully');
+  if (mainWindow) {
+    mainWindow.webContents.send('updater-downloaded', `Version v${info.version || ''} downloaded! Ready to install.`);
+  }
+});
+
+ipcMain.on('restart-to-update', () => {
+  try {
+    autoUpdater.quitAndInstall();
+  } catch (err) {
+    console.error('[Auto-Updater] Failed to quit and install:', err);
+  }
+});
+
+// Trigger automatic check on startup (delay by 3 seconds so everything loaded) + repeating timer every 4 hours
+app.whenReady().then(() => {
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.error('[Auto-Updater] Catch on startup check:', err);
+    });
+  }, 3000);
+
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.error('[Auto-Updater] Catch on interval check:', err);
+    });
+  }, 4 * 60 * 60 * 1000);
+});
+

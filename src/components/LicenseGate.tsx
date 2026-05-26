@@ -124,8 +124,6 @@ export default function LicenseGate({ onValidated, isLight = false }: LicenseGat
 
       <div className="flex flex-col items-center text-center mt-2">
         <div className="relative mb-4 flex items-center justify-center">
-          {/* Accent glow behind launcher icon */}
-          <div className="absolute inset-0 bg-violet-600/25 blur-xl rounded-full w-12 h-12" />
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white border border-violet-400/30">
             <Key size={22} className="animate-pulse" />
           </div>

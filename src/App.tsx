@@ -149,6 +149,8 @@ export default function App() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ cat: Category; rect: DOMRect } | null>(null);
+  const [updaterMessage, setUpdaterMessage] = useState<string>('');
+  const [updaterReady, setUpdaterReady] = useState<boolean>(false);
 
   // Floating Mini-Icon Drag
   const [miniX, setMiniX] = useState(40);
@@ -194,6 +196,35 @@ export default function App() {
       setIsIframe(true);
     }
   }, []);
+
+  // Listen for auto-updater events in Electron
+  useEffect(() => {
+    if (!isElectron) return;
+
+    let unsubscribeMsg: (() => void) | undefined;
+    let unsubscribeDownloaded: (() => void) | undefined;
+
+    try {
+      if ((window as any).electronAPI?.onUpdaterMessage) {
+        unsubscribeMsg = (window as any).electronAPI.onUpdaterMessage((text: string) => {
+          setUpdaterMessage(text);
+        });
+      }
+      if ((window as any).electronAPI?.onUpdaterDownloaded) {
+        unsubscribeDownloaded = (window as any).electronAPI.onUpdaterDownloaded((text: string) => {
+          setUpdaterReady(true);
+          setUpdaterMessage(text);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to subscribe to auto-updater events:', err);
+    }
+
+    return () => {
+      if (unsubscribeMsg) unsubscribeMsg();
+      if (unsubscribeDownloaded) unsubscribeDownloaded();
+    };
+  }, [isElectron]);
 
   // Active task queue
   const queue = buildQueue();
@@ -495,6 +526,15 @@ export default function App() {
     };
   }, [voiceOn]);
 
+  // Sync minimized state to Electron to trigger 80x80 container resizing
+  useEffect(() => {
+    if (isElectron) {
+      try {
+        (window as any).electronAPI.setMinimizedState(isMinimized);
+      } catch (err) {}
+    }
+  }, [isElectron, isMinimized]);
+
   // Dynamic card auto-resizing IPC for Electron
   useEffect(() => {
     if (!isElectron || isMinimized || !isActivated) return;
@@ -517,7 +557,18 @@ export default function App() {
 
   // Toggle ignoring click-through on transparent padding space outside the app card in Electron
   useEffect(() => {
-    if (!isElectron || isMinimized || !isActivated) return;
+    if (!isElectron || !isActivated) return;
+
+    if (isMinimized) {
+      // In minimized widget mode, ensure mouse interaction works perfectly over the 80x80 widget
+      if (lastIgnoreRef.current !== false) {
+        lastIgnoreRef.current = false;
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+      return;
+    }
 
     const handleWindowMouseMove = (e: MouseEvent) => {
       // If full screen overlays are open, ensure the entire window is interactive
@@ -706,11 +757,7 @@ export default function App() {
   };
 
   const minimizeCard = () => {
-    if ((window as any).electronAPI) {
-      (window as any).electronAPI.minimize();
-    } else {
-      setIsMinimized(true);
-    }
+    setIsMinimized(true);
   };
 
   const toggleEdit = () => {
@@ -822,13 +869,29 @@ export default function App() {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="mini-icon-shell"
-            style={{ left: miniX, top: miniY }}
-            onPointerDown={handleMiniPointerDown}
-            onPointerMove={handleMiniPointerMove}
-            onPointerUp={handleMiniPointerUp}
+            className="mini-icon-shell flex items-center justify-center"
+            style={isElectron ? {
+              left: 0,
+              top: 0,
+              width: '80px',
+              height: '80px',
+              position: 'absolute',
+              WebkitAppRegion: 'drag',
+            } : {
+              left: miniX,
+              top: miniY,
+            }}
+            onPointerDown={isElectron ? undefined : handleMiniPointerDown}
+            onPointerMove={isElectron ? undefined : handleMiniPointerMove}
+            onPointerUp={isElectron ? undefined : handleMiniPointerUp}
           >
-            <OverdeskLogo size={54} />
+            <div
+              onClick={isElectron ? () => setIsMinimized(false) : undefined}
+              className="cursor-pointer"
+              style={isElectron ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}
+            >
+              <OverdeskLogo size={54} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1188,7 +1251,19 @@ export default function App() {
       />
 
       {/* Exquisite About info overlay modal */}
-      <AboutOverlay isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} isLight={isLight} />
+      <AboutOverlay
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+        isLight={isLight}
+        updaterMessage={updaterMessage}
+        updaterReady={updaterReady}
+        isElectron={isElectron}
+        onRestartToUpdate={() => {
+          if (isElectron && (window as any).electronAPI?.restartToUpdate) {
+            (window as any).electronAPI.restartToUpdate();
+          }
+        }}
+      />
         </>
       )}
     </div>

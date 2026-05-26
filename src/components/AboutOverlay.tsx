@@ -5,9 +5,21 @@ interface AboutOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   isLight: boolean;
+  updaterMessage?: string;
+  updaterReady?: boolean;
+  isElectron?: boolean;
+  onRestartToUpdate?: () => void;
 }
 
-export default function AboutOverlay({ isOpen, onClose, isLight }: AboutOverlayProps) {
+export default function AboutOverlay({
+  isOpen,
+  onClose,
+  isLight,
+  updaterMessage,
+  updaterReady,
+  isElectron,
+  onRestartToUpdate,
+}: AboutOverlayProps) {
   if (!isOpen) return null;
 
   return (
@@ -54,6 +66,31 @@ export default function AboutOverlay({ isOpen, onClose, isLight }: AboutOverlayP
           Built for traders who take their preparation seriously.<br /><br />
           <strong className={isLight ? 'text-black/85' : 'text-white/70'}>Overdesk</strong> keeps your checklist always visible, always ready.
         </p>
+
+        {isElectron && (
+          <div className="mt-5 p-3 rounded-2xl border bg-violet-500/5 text-left transition-all duration-200" style={{ borderColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
+            <div className={`text-[9px] uppercase tracking-wider font-bold ${isLight ? 'text-black/40' : 'text-white/35'}`}>
+              System Updates
+            </div>
+            {updaterMessage ? (
+              <p className={`text-xs mt-1.5 font-medium ${isLight ? 'text-black/85' : 'text-white/90'}`}>
+                {updaterMessage}
+              </p>
+            ) : (
+              <p className={`text-xs mt-1.5 font-medium ${isLight ? 'text-black/50' : 'text-white/50'}`}>
+                ✓ Up to date (silent cloud delivery active)
+              </p>
+            )}
+            {updaterReady && onRestartToUpdate && (
+              <button
+                onClick={onRestartToUpdate}
+                className="mt-2.5 w-full py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-[10px] tracking-wide transition-all active:scale-95 duration-150 shadow-md shadow-violet-500/15 cursor-pointer"
+              >
+                Restart & Apply Update
+              </button>
+            )}
+          </div>
+        )}
 
         <button
           onClick={onClose}

@@ -25,28 +25,34 @@ async function main() {
   fs.writeFileSync(path.join(__dirname, 'electron', 'icon.png'), png512Buffer);
   console.log('✓ Created build/icon.png and electron/icon.png (512x512)');
 
-  // Render SVG to 256x256 PNG for ICO conversion
-  const png256Buffer = await sharp(Buffer.from(svgLogo))
-    .resize(256, 256)
-    .png()
-    .toBuffer();
+  // Generate PNGs at all key Windows 11 Scaling resolutions (16, 24, 32, 36, 48, 64, 128, 256)
+  const sizes = [16, 24, 32, 36, 48, 64, 128, 256];
+  const filePaths = [];
+  for (const size of sizes) {
+    const buffer = await sharp(Buffer.from(svgLogo))
+      .resize(size, size)
+      .png()
+      .toBuffer();
+    const filePath = path.join(buildDir, `temp-icon-${size}.png`);
+    fs.writeFileSync(filePath, buffer);
+    filePaths.push(filePath);
+  }
 
-  const temp256Path = path.join(buildDir, 'temp-icon-256.png');
-  fs.writeFileSync(temp256Path, png256Buffer);
-
-  console.log('Converting PNG to ICO...');
+  console.log('Converting multiple PNG layers to unified ICO...');
   try {
-    const icoBuffer = await pngToIco(temp256Path);
+    const icoBuffer = await pngToIco(filePaths);
     fs.writeFileSync(path.join(buildDir, 'icon.ico'), icoBuffer);
     fs.writeFileSync(path.join(__dirname, 'electron', 'icon.ico'), icoBuffer);
-    console.log('✓ Created build/icon.ico and electron/icon.ico (256x256)');
+    console.log('✓ Created build/icon.ico and electron/icon.ico (8 resolutions inside)');
   } catch (err) {
     console.error('Failed to convert ICO:', err);
   }
 
-  // Cleanup temp file
-  if (fs.existsSync(temp256Path)) {
-    fs.unlinkSync(temp256Path);
+  // Cleanup temp files
+  for (const filePath of filePaths) {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
   }
   
   console.log('Done generating asset resources!');

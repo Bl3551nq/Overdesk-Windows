@@ -6,4 +6,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setAlwaysOnTop: (flag) => ipcRenderer.send('window-set-always-on-top', flag),
   resizeWindow: (width, height) => ipcRenderer.send('window-resize', width, height),
   setIgnoreMouseEvents: (ignore, options) => ipcRenderer.send('window-set-ignore-mouse-events', ignore, options),
+  setMinimizedState: (minimized) => ipcRenderer.send('window-set-minimized-state', minimized),
+  onUpdaterMessage: (callback) => {
+    const subscription = (event, text) => callback(text);
+    ipcRenderer.on('updater-message', subscription);
+    return () => ipcRenderer.off('updater-message', subscription);
+  },
+  onUpdaterDownloaded: (callback) => {
+    const subscription = (event, text) => callback(text);
+    ipcRenderer.on('updater-downloaded', subscription);
+    return () => ipcRenderer.off('updater-downloaded', subscription);
+  },
+  restartToUpdate: () => ipcRenderer.send('restart-to-update'),
 });
