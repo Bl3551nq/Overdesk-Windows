@@ -5,4 +5,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   close: () => ipcRenderer.send('window-close'),
   setAlwaysOnTop: (flag) => ipcRenderer.send('window-set-always-on-top', flag),
   resizeWindow: (width, height) => ipcRenderer.send('window-resize', width, height),
+  setIgnoreMouseEvents: (ignore, options) => ipcRenderer.send('window-set-ignore-mouse-events', ignore, options),
 });

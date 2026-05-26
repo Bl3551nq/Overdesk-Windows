@@ -169,6 +169,7 @@ export default function App() {
   // References & Electron Detection
   const cardRef = useRef<HTMLDivElement>(null);
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI;
+  const lastIgnoreRef = useRef<boolean | null>(null);
 
   // Timer run variables
   const [timerSeconds, setTimerSeconds] = useState(0);
@@ -513,6 +514,59 @@ export default function App() {
       resizeObserver.disconnect();
     };
   }, [isElectron, isMinimized, isActivated]);
+
+  // Toggle ignoring click-through on transparent padding space outside the app card in Electron
+  useEffect(() => {
+    if (!isElectron || isMinimized || !isActivated) return;
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      // If full screen overlays are open, ensure the entire window is interactive
+      if (isAboutOpen || !!colorPickerTarget) {
+        if (lastIgnoreRef.current !== false) {
+          lastIgnoreRef.current = false;
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        }
+        return;
+      }
+
+      const cardEl = cardRef.current;
+      if (!cardEl) return;
+
+      const rect = cardEl.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+
+      // Check if mouse is within the visual card element
+      const isInside = (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      );
+
+      if (isInside) {
+        if (lastIgnoreRef.current !== false) {
+          lastIgnoreRef.current = false;
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        }
+      } else {
+        if (lastIgnoreRef.current !== true) {
+          lastIgnoreRef.current = true;
+          (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      if (isElectron) {
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+    };
+  }, [isElectron, isMinimized, isActivated, isAboutOpen, colorPickerTarget]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {

@@ -206,3 +206,9 @@ ipcMain.on('window-resize', (event, width, height) => {
     mainWindow.setSize(w, h);
   }
 });
+
+ipcMain.on('window-set-ignore-mouse-events', (event, ignore, options) => {
+  if (mainWindow) {
+    mainWindow.setIgnoreMouseEvents(ignore, options);
+  }
+});
