@@ -762,11 +762,6 @@ export default function App() {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
     setIsDraggingMini(false);
-    
-    // Only unminimize if we did NOT drag the icon (clicked static)
-    if (!miniDidMove.current) {
-      setIsMinimized(false);
-    }
   };
 
   const handleMiniPointerCancel = (e: React.PointerEvent) => {
@@ -913,42 +908,34 @@ export default function App() {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className={`mini-icon-shell flex items-center justify-center select-none ${isElectron ? '' : 'cursor-grab active:cursor-grabbing'}`}
+            className={`mini-icon-shell flex items-center justify-center select-none cursor-grab active:cursor-grabbing`}
             style={isElectron ? {
               left: 0,
               top: 0,
               width: '64px',
               height: '64px',
               position: 'absolute',
-              WebkitAppRegion: 'drag',
             } as React.CSSProperties : {
               left: miniX,
               top: miniY,
               width: '64px',
               height: '64px',
             }}
-            onPointerDown={isElectron ? undefined : handleMiniPointerDown}
-            onPointerMove={isElectron ? undefined : handleMiniPointerMove}
-            onPointerUp={isElectron ? undefined : handleMiniPointerUp}
-            onPointerCancel={isElectron ? undefined : handleMiniPointerCancel}
-            onLostPointerCapture={isElectron ? undefined : handleMiniPointerCancel}
+            onPointerDown={handleMiniPointerDown}
+            onPointerMove={handleMiniPointerMove}
+            onPointerUp={handleMiniPointerUp}
+            onPointerCancel={handleMiniPointerCancel}
+            onLostPointerCapture={handleMiniPointerCancel}
+            onDoubleClick={() => {
+              setIsMinimized(false);
+            }}
           >
             <div
-              className="transition-all duration-300 hover:scale-[1.08] active:scale-[0.96] cursor-pointer"
-              style={isElectron ? {
-                filter: 'drop-shadow(0 0 16px rgba(124, 58, 237, 0.75)) drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))',
+              className="transition-all duration-300 cursor-pointer"
+              style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                WebkitAppRegion: 'no-drag',
-              } as React.CSSProperties : {
-                filter: 'drop-shadow(0 0 16px rgba(124, 58, 237, 0.75)) drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onClick={() => {
-                setIsMinimized(false);
               }}
             >
               <OverdeskLogo size={40} />

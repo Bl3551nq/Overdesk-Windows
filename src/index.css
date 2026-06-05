@@ -190,12 +190,12 @@
 }
 
 .mini-icon-shell:hover {
-  transform: scale(1.08);
+  transform: none;
 }
 
 .mini-icon-shell:active {
   cursor: grabbing;
-  transform: scale(0.95);
+  transform: none;
 }
 
 /* ══ TYPEWRITER CURSOR ══ */
