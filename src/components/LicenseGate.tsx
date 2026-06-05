@@ -104,14 +104,15 @@ export default function LicenseGate({ onValidated, isLight = false }: LicenseGat
 
   return (
     <div 
-      className={`license-gate-card relative w-[340px] rounded-3xl p-6 transition-all border select-none ${
+      className={`license-gate-card relative w-[340px] rounded-3xl p-6 transition-all select-none ${
         isLight
-          ? 'bg-slate-50/95 border-slate-200 text-slate-800'
-          : 'bg-zinc-950/90 border-zinc-800 text-zinc-100'
+          ? 'bg-slate-50 text-slate-800'
+          : 'bg-zinc-950 text-zinc-100'
       }`}
       style={{
         boxShadow: 'none',
-        backdropFilter: 'blur(20px)',
+        border: 'none',
+        backdropFilter: 'none',
       }}
     >
       {/* Draggable header area when in Electron */}

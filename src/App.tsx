@@ -157,6 +157,7 @@ export default function App() {
   const [miniY, setMiniY] = useState(40);
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
+  const miniStartCoords = useRef({ x: 0, y: 0 });
   const miniDidMove = useRef(false);
 
   // Dragging Card
@@ -708,6 +709,14 @@ export default function App() {
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDraggingMini(true);
     miniDidMove.current = false;
+    
+    // Store original start coordinates for click vs drag threshold
+    miniStartCoords.current = {
+      x: e.screenX,
+      y: e.screenY,
+    };
+    
+    // Store previous coordinates for frame-to-frame delta
     miniDragOffset.current = {
       x: e.screenX,
       y: e.screenY,
@@ -717,13 +726,16 @@ export default function App() {
   const handleMiniPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingMini) return;
     
+    // Calculate total distance from start to determine if it's a drag
+    const totalDx = Math.abs(e.screenX - miniStartCoords.current.x);
+    const totalDy = Math.abs(e.screenY - miniStartCoords.current.y);
+    if (totalDx > 8 || totalDy > 8) {
+      miniDidMove.current = true;
+    }
+    
     // Calculate the movement delta relative to the previous coordinate position
     const dx = e.screenX - miniDragOffset.current.x;
     const dy = e.screenY - miniDragOffset.current.y;
-    
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      miniDidMove.current = true;
-    }
     
     if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
       if (isElectron) {
@@ -755,6 +767,13 @@ export default function App() {
     if (!miniDidMove.current) {
       setIsMinimized(false);
     }
+  };
+
+  const handleMiniPointerCancel = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+    setIsDraggingMini(false);
   };
 
   /* Left-side Resizing */
@@ -882,45 +901,57 @@ export default function App() {
   return (
     <div className={`relative w-screen h-screen overflow-hidden font-sans select-none bg-transparent ${isElectron ? 'flex items-center justify-center' : ''}`}>
       {!isActivated ? (
-        <div className="license-gate-wrapper w-full h-full flex items-center justify-center bg-black/50 backdrop-blur-md">
+        <div className="license-gate-wrapper w-full h-full flex items-center justify-center bg-transparent">
           <LicenseGate onValidated={handleLicenseActivated} isLight={isLight} />
         </div>
       ) : (
         <>
           {/* Mini floating launcher icon when minimized */}
-       <AnimatePresence>
-        {isMinimized && (
-          <motion.div
+          <AnimatePresence>
+            {isMinimized && (
+              <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="mini-icon-shell flex items-center justify-center cursor-grab select-none active:cursor-grabbing"
+            className={`mini-icon-shell flex items-center justify-center select-none ${isElectron ? '' : 'cursor-grab active:cursor-grabbing'}`}
             style={isElectron ? {
               left: 0,
               top: 0,
-              width: '140px',
-              height: '140px',
+              width: '64px',
+              height: '64px',
               position: 'absolute',
-            } : {
+              WebkitAppRegion: 'drag',
+            } as React.CSSProperties : {
               left: miniX,
               top: miniY,
-              width: '140px',
-              height: '140px',
+              width: '64px',
+              height: '64px',
             }}
-            onPointerDown={handleMiniPointerDown}
-            onPointerMove={handleMiniPointerMove}
-            onPointerUp={handleMiniPointerUp}
+            onPointerDown={isElectron ? undefined : handleMiniPointerDown}
+            onPointerMove={isElectron ? undefined : handleMiniPointerMove}
+            onPointerUp={isElectron ? undefined : handleMiniPointerUp}
+            onPointerCancel={isElectron ? undefined : handleMiniPointerCancel}
+            onLostPointerCapture={isElectron ? undefined : handleMiniPointerCancel}
           >
             <div
-              className="transition-all duration-300 hover:scale-[1.08] active:scale-[0.96]"
-              style={{
+              className="transition-all duration-300 hover:scale-[1.08] active:scale-[0.96] cursor-pointer"
+              style={isElectron ? {
+                filter: 'drop-shadow(0 0 16px rgba(124, 58, 237, 0.75)) drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                WebkitAppRegion: 'no-drag',
+              } as React.CSSProperties : {
                 filter: 'drop-shadow(0 0 16px rgba(124, 58, 237, 0.75)) drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
+              onClick={() => {
+                setIsMinimized(false);
+              }}
             >
-              <OverdeskLogo size={54} />
+              <OverdeskLogo size={40} />
             </div>
           </motion.div>
         )}

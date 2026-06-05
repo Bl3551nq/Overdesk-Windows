@@ -217,8 +217,8 @@ ipcMain.on('window-set-ignore-mouse-events', (event, ignore, options) => {
 ipcMain.on('window-set-minimized-state', (event, minimized) => {
   if (mainWindow) {
     if (minimized) {
-      mainWindow.setMinimumSize(140, 140);
-      mainWindow.setSize(140, 140);
+      mainWindow.setMinimumSize(64, 64);
+      mainWindow.setSize(64, 64);
       mainWindow.setResizable(false);
     } else {
       mainWindow.setResizable(true);

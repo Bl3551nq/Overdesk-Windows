@@ -337,7 +337,7 @@ body {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* Clear shadow for the license page and its wrapper background */
+/* Clear shadow and border for the license page and its wrapper background */
 .license-gate-wrapper,
 .license-gate-card,
 .license-gate-card *,
@@ -346,4 +346,12 @@ body {
   text-shadow: none !important;
   filter: none !important;
   -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.license-gate-wrapper {
+  background: transparent !important;
 }
