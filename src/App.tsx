@@ -706,6 +706,17 @@ export default function App() {
 
   /* Dragging for mini float icon */
   const handleMiniPointerDown = (e: React.PointerEvent) => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.startWindowDrag) {
+          (window as any).electronAPI.startWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(true);
+      miniDidMove.current = false;
+      return;
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDraggingMini(true);
     miniDidMove.current = false;
@@ -725,6 +736,7 @@ export default function App() {
 
   const handleMiniPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingMini) return;
+    if (isElectron) return; // Main process drag handles everything smoothly
     
     // Calculate total distance from start to determine if it's a drag
     const totalDx = Math.abs(e.screenX - miniStartCoords.current.x);
@@ -738,16 +750,8 @@ export default function App() {
     const dy = e.screenY - miniDragOffset.current.y;
     
     if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
-      if (isElectron) {
-        try {
-          if ((window as any).electronAPI?.moveWindowByDelta) {
-            (window as any).electronAPI.moveWindowByDelta(dx, dy);
-          }
-        } catch (err) {}
-      } else {
-        setMiniX((prev) => Math.max(0, Math.min(window.innerWidth - 120, prev + dx)));
-        setMiniY((prev) => Math.max(0, Math.min(window.innerHeight - 120, prev + dy)));
-      }
+      setMiniX((prev) => Math.max(0, Math.min(window.innerWidth - 120, prev + dx)));
+      setMiniY((prev) => Math.max(0, Math.min(window.innerHeight - 120, prev + dy)));
       
       // Pivot reference coordinate to current screen position
       miniDragOffset.current = {
@@ -758,6 +762,16 @@ export default function App() {
   };
 
   const handleMiniPointerUp = (e: React.PointerEvent) => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.endWindowDrag) {
+          (window as any).electronAPI.endWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(false);
+      return;
+    }
+
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
@@ -765,6 +779,16 @@ export default function App() {
   };
 
   const handleMiniPointerCancel = (e: React.PointerEvent) => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.endWindowDrag) {
+          (window as any).electronAPI.endWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(false);
+      return;
+    }
+
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}

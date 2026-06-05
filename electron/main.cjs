@@ -220,10 +220,12 @@ ipcMain.on('window-set-minimized-state', (event, minimized) => {
       mainWindow.setMinimumSize(64, 64);
       mainWindow.setSize(64, 64);
       mainWindow.setResizable(false);
+      mainWindow.setSkipTaskbar(true);
     } else {
       mainWindow.setResizable(true);
       mainWindow.setMinimumSize(240, 280);
       mainWindow.setSize(380, 520);
+      mainWindow.setSkipTaskbar(false);
     }
   }
 });
@@ -232,6 +234,44 @@ ipcMain.on('window-move-by-delta', (event, dx, dy) => {
   if (mainWindow) {
     const pos = mainWindow.getPosition();
     mainWindow.setPosition(Math.round(pos[0] + dx), Math.round(pos[1] + dy));
+  }
+});
+
+let isCustomDragging = false;
+let customDragInterval = null;
+
+ipcMain.on('window-drag-start', (event) => {
+  if (isCustomDragging) return;
+  if (!mainWindow) return;
+  isCustomDragging = true;
+  
+  const cursorStart = screen.getCursorScreenPoint();
+  const winStart = mainWindow.getPosition();
+  
+  if (customDragInterval) {
+    clearInterval(customDragInterval);
+  }
+  
+  customDragInterval = setInterval(() => {
+    if (!isCustomDragging || !mainWindow) {
+      if (customDragInterval) {
+        clearInterval(customDragInterval);
+        customDragInterval = null;
+      }
+      return;
+    }
+    const cursor = screen.getCursorScreenPoint();
+    const nx = winStart[0] + (cursor.x - cursorStart.x);
+    const ny = winStart[1] + (cursor.y - cursorStart.y);
+    mainWindow.setPosition(Math.round(nx), Math.round(ny));
+  }, 10);
+});
+
+ipcMain.on('window-drag-end', () => {
+  isCustomDragging = false;
+  if (customDragInterval) {
+    clearInterval(customDragInterval);
+    customDragInterval = null;
   }
 });
 
