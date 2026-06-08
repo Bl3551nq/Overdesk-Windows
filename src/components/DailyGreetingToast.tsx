@@ -8,7 +8,52 @@ interface DailyGreetingToastProps {
 
 export default function DailyGreetingToast({ isLight }: DailyGreetingToastProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const greetingText = "Hi, Today is another day to make good target.";
+  const greetingText = "Today is a fresh opportunity to reach new heights. Set your target, stay focused, and make every effort count.";
+
+  const playChimeSound = (): Promise<void> => {
+    return new Promise((resolve) => {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) {
+          resolve();
+          return;
+        }
+        const ctx = new AudioContextClass();
+        const now = ctx.currentTime;
+        
+        const playTone = (freq: number, startTime: number, duration: number, volume: number) => {
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+          
+          gainNode.gain.setValueAtTime(0, startTime);
+          gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.04);
+          gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+          
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+        
+        // A clear, premium, elegant rising chime:
+        // C5 (523.25Hz) -> E5 (659.25Hz) -> G5 (783.99Hz) -> C6 (1046.50Hz)
+        playTone(523.25, now + 0.0, 0.22, 0.1);
+        playTone(659.25, now + 0.08, 0.22, 0.1);
+        playTone(783.99, now + 0.16, 0.25, 0.1);
+        playTone(1046.50, now + 0.24, 0.45, 0.12);
+        
+        setTimeout(() => {
+          resolve();
+        }, 400);
+      } catch (e) {
+        resolve();
+      }
+    });
+  };
 
   useEffect(() => {
     // Check if we already greeted today
@@ -27,20 +72,20 @@ export default function DailyGreetingToast({ isLight }: DailyGreetingToastProps)
   }, []);
 
   const triggerSpeechFlow = (text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const playAndSpeak = async () => {
+      await playChimeSound();
+      if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    const speak = () => {
       // Cancel active speech so they don't overlap
       window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
+      utterance.rate = 0.98;
       utterance.pitch = 1.05;
       utterance.volume = 0.9;
 
       // Select a premium natural sounding voice if available
       const voices = window.speechSynthesis.getVoices();
-      // Try to find a premium English voice
       const preferredVoice = voices.find(v => 
         (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel')) && v.lang.startsWith('en')
       ) || voices.find(v => v.lang.startsWith('en'));
@@ -53,45 +98,29 @@ export default function DailyGreetingToast({ isLight }: DailyGreetingToastProps)
     };
 
     // If voices aren't loaded yet (Chrome/Safari sometimes load asynchronously)
-    if (window.speechSynthesis.getVoices().length === 0) {
+    if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) {
       window.speechSynthesis.onvoiceschanged = () => {
-        speak();
-        // Unbind after single execution
+        playAndSpeak();
         window.speechSynthesis.onvoiceschanged = null;
       };
     } else {
-      speak();
+      playAndSpeak();
     }
 
     // Workaround for browser security (SpeechSynthesis blocked until click)
     const handleFirstInteraction = () => {
-      speak();
+      playAndSpeak();
       document.removeEventListener('pointerdown', handleFirstInteraction);
       document.removeEventListener('keydown', handleFirstInteraction);
     };
 
-    // Register simple one-off interaction listeners to ensure it speaks even if auto-playback is initially blocked by Chrome flags
+    // Register simple one-off interaction listeners to ensure it speaks even if auto-playback is initially blocked
     document.addEventListener('pointerdown', handleFirstInteraction);
     document.addEventListener('keydown', handleFirstInteraction);
   };
 
   const speakAgain = () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(greetingText);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.05;
-      
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
-        (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel')) && v.lang.startsWith('en')
-      ) || voices.find(v => v.lang.startsWith('en'));
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-      window.speechSynthesis.speak(utterance);
-    }
+    triggerSpeechFlow(greetingText);
   };
 
   if (!isOpen) return null;
@@ -140,7 +169,7 @@ export default function DailyGreetingToast({ isLight }: DailyGreetingToastProps)
           <p className={`text-xs font-semibold leading-relaxed tracking-normal ${
             isLight ? 'text-slate-800' : 'text-zinc-200'
           }`}>
-            "Hi, Today is another day to make good target"
+            "{greetingText}"
           </p>
 
           {/* Controls: Replay button */}
