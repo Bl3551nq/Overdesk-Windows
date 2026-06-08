@@ -116,7 +116,7 @@ function createWindow() {
       if (typeof fetch === 'undefined') return false;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout for serverless cold-starts
 
         const response = await fetch(url, {
           method: 'GET',
