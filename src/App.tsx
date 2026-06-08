@@ -28,6 +28,7 @@ import {
 import EditPanel from './components/EditPanel';
 import AboutOverlay from './components/AboutOverlay';
 import ColorPickerPopup from './components/ColorPickerPopup';
+import AutoUpdaterPopup from './components/AutoUpdaterPopup';
 import { TypewriterText } from './components/TypewriterText';
 import { OverdeskLogo } from './components/OverdeskLogo';
 import LicenseGate from './components/LicenseGate';
@@ -1304,6 +1305,20 @@ export default function App() {
           }
         }}
       />
+
+      {/* Auto-Updater Popup overlay that triggers automatically when a background release is active or downloaded */}
+      {isElectron && (
+        <AutoUpdaterPopup
+          message={updaterMessage}
+          isReady={updaterReady}
+          isLight={isLight}
+          onRestartToUpdate={() => {
+            if (isElectron && (window as any).electronAPI?.restartToUpdate) {
+              (window as any).electronAPI.restartToUpdate();
+            }
+          }}
+        />
+      )}
         </>
       )}
     </div>
