@@ -12,7 +12,13 @@
     "lint": "tsc --noEmit",
     "electron:start": "electron .",
     "electron:pack": "node generate-icons.cjs && vite build && electron-builder --publish never",
-    "electron:publish": "node generate-icons.cjs && vite build && electron-builder --publish always"
+    "electron:pack:win": "node generate-icons.cjs && vite build && electron-builder --win --publish never",
+    "electron:pack:mac": "node generate-icons.cjs && vite build && electron-builder --mac --publish never",
+    "electron:pack:all": "node generate-icons.cjs && vite build && electron-builder --win --mac --publish never",
+    "electron:publish": "node generate-icons.cjs && vite build && electron-builder --publish always",
+    "electron:publish:win": "node generate-icons.cjs && vite build && electron-builder --win --publish always",
+    "electron:publish:mac": "node generate-icons.cjs && vite build && electron-builder --mac --publish always",
+    "electron:publish:all": "node generate-icons.cjs && vite build && electron-builder --win --mac --publish always"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
