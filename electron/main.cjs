@@ -165,6 +165,12 @@ function createWindow() {
     }
   });
 
+  // Intercept minimize events to hide to tray/system-bar instead of staying in the OS taskbar/dock
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -189,7 +195,7 @@ app.on('window-all-closed', () => {
 
 // Window controls IPC handling
 ipcMain.on('window-minimize', () => {
-  if (mainWindow) mainWindow.minimize();
+  if (mainWindow) mainWindow.hide();
 });
 
 ipcMain.on('window-close', () => {
