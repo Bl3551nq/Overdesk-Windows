@@ -214,22 +214,6 @@ ipcMain.on('window-set-ignore-mouse-events', (event, ignore, options) => {
   }
 });
 
-ipcMain.on('window-set-minimized-state', (event, minimized) => {
-  if (mainWindow) {
-    if (minimized) {
-      mainWindow.setMinimumSize(64, 64);
-      mainWindow.setSize(64, 64);
-      mainWindow.setResizable(false);
-      mainWindow.setSkipTaskbar(true);
-    } else {
-      mainWindow.setResizable(true);
-      mainWindow.setMinimumSize(240, 280);
-      mainWindow.setSize(380, 520);
-      mainWindow.setSkipTaskbar(false);
-    }
-  }
-});
-
 ipcMain.on('window-move-by-delta', (event, dx, dy) => {
   if (mainWindow) {
     const pos = mainWindow.getPosition();

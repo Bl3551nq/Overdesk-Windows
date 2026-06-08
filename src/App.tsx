@@ -12,7 +12,8 @@ import {
   SlidersHorizontal,
   FolderLock,
   X,
-  Mic
+  Mic,
+  Minus
 } from 'lucide-react';
 import { Category, AppState } from './types';
 import { DEFAULT_CATEGORIES, ACCENT_PRESETS } from './data';
@@ -151,14 +152,6 @@ export default function App() {
   const [colorPickerTarget, setColorPickerTarget] = useState<{ cat: Category; rect: DOMRect } | null>(null);
   const [updaterMessage, setUpdaterMessage] = useState<string>('');
   const [updaterReady, setUpdaterReady] = useState<boolean>(false);
-
-  // Floating Mini-Icon Drag
-  const [miniX, setMiniX] = useState(40);
-  const [miniY, setMiniY] = useState(40);
-  const [isDraggingMini, setIsDraggingMini] = useState(false);
-  const miniDragOffset = useRef({ x: 0, y: 0 });
-  const miniStartCoords = useRef({ x: 0, y: 0 });
-  const miniDidMove = useRef(false);
 
   // Dragging Card
   const [isDragging, setIsDragging] = useState(false);
@@ -527,15 +520,6 @@ export default function App() {
     };
   }, [voiceOn]);
 
-  // Sync minimized state to Electron to trigger 80x80 container resizing
-  useEffect(() => {
-    if (isElectron) {
-      try {
-        (window as any).electronAPI.setMinimizedState(isMinimized);
-      } catch (err) {}
-    }
-  }, [isElectron, isMinimized]);
-
   // Dynamic card auto-resizing IPC for Electron
   useEffect(() => {
     if (!isElectron || isMinimized || !isActivated) return;
@@ -704,97 +688,6 @@ export default function App() {
     setIsDragging(false);
   };
 
-  /* Dragging for mini float icon */
-  const handleMiniPointerDown = (e: React.PointerEvent) => {
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.startWindowDrag) {
-          (window as any).electronAPI.startWindowDrag();
-        }
-      } catch (err) {}
-      setIsDraggingMini(true);
-      miniDidMove.current = false;
-      return;
-    }
-
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setIsDraggingMini(true);
-    miniDidMove.current = false;
-    
-    // Store original start coordinates for click vs drag threshold
-    miniStartCoords.current = {
-      x: e.screenX,
-      y: e.screenY,
-    };
-    
-    // Store previous coordinates for frame-to-frame delta
-    miniDragOffset.current = {
-      x: e.screenX,
-      y: e.screenY,
-    };
-  };
-
-  const handleMiniPointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingMini) return;
-    if (isElectron) return; // Main process drag handles everything smoothly
-    
-    // Calculate total distance from start to determine if it's a drag
-    const totalDx = Math.abs(e.screenX - miniStartCoords.current.x);
-    const totalDy = Math.abs(e.screenY - miniStartCoords.current.y);
-    if (totalDx > 8 || totalDy > 8) {
-      miniDidMove.current = true;
-    }
-    
-    // Calculate the movement delta relative to the previous coordinate position
-    const dx = e.screenX - miniDragOffset.current.x;
-    const dy = e.screenY - miniDragOffset.current.y;
-    
-    if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
-      setMiniX((prev) => Math.max(0, Math.min(window.innerWidth - 120, prev + dx)));
-      setMiniY((prev) => Math.max(0, Math.min(window.innerHeight - 120, prev + dy)));
-      
-      // Pivot reference coordinate to current screen position
-      miniDragOffset.current = {
-        x: e.screenX,
-        y: e.screenY,
-      };
-    }
-  };
-
-  const handleMiniPointerUp = (e: React.PointerEvent) => {
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.endWindowDrag) {
-          (window as any).electronAPI.endWindowDrag();
-        }
-      } catch (err) {}
-      setIsDraggingMini(false);
-      return;
-    }
-
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {}
-    setIsDraggingMini(false);
-  };
-
-  const handleMiniPointerCancel = (e: React.PointerEvent) => {
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.endWindowDrag) {
-          (window as any).electronAPI.endWindowDrag();
-        }
-      } catch (err) {}
-      setIsDraggingMini(false);
-      return;
-    }
-
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {}
-    setIsDraggingMini(false);
-  };
-
   /* Left-side Resizing */
   const handleResizeDown = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -820,6 +713,14 @@ export default function App() {
   };
 
   const minimizeCard = () => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.minimize) {
+          (window as any).electronAPI.minimize();
+          return;
+        }
+      } catch (err) {}
+    }
     setIsMinimized(true);
   };
 
@@ -925,48 +826,27 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* Mini floating launcher icon when minimized */}
+          {/* Elegant floating open handle for non-Electron web preview */}
           <AnimatePresence>
-            {isMinimized && (
+            {isMinimized && !isElectron && (
               <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className={`mini-icon-shell flex items-center justify-center select-none cursor-grab active:cursor-grabbing`}
-            style={isElectron ? {
-              left: 0,
-              top: 0,
-              width: '64px',
-              height: '64px',
-              position: 'absolute',
-            } as React.CSSProperties : {
-              left: miniX,
-              top: miniY,
-              width: '64px',
-              height: '64px',
-            }}
-            onPointerDown={handleMiniPointerDown}
-            onPointerMove={handleMiniPointerMove}
-            onPointerUp={handleMiniPointerUp}
-            onPointerCancel={handleMiniPointerCancel}
-            onLostPointerCapture={handleMiniPointerCancel}
-            onDoubleClick={() => {
-              setIsMinimized(false);
-            }}
-          >
-            <div
-              className="transition-all duration-300 cursor-pointer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <OverdeskLogo size={40} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                className="fixed bottom-6 right-6 z-[9999]"
+              >
+                <button
+                  onClick={() => setIsMinimized(false)}
+                  className="flex items-center gap-2.5 pl-3.5 pr-4.5 py-2.5 rounded-full bg-[var(--bg)] hover:bg-[var(--row-hover)] active:scale-95 text-[var(--text)] font-sans font-medium text-xs border border-[var(--divider)] shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all cursor-pointer"
+                >
+                  <div className="text-violet-600 animate-pulse">
+                    <OverdeskLogo size={16} />
+                  </div>
+                  <span>Open Overdesk</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
       {/* Main card interface */}
       <div
@@ -1021,12 +901,7 @@ export default function App() {
               onClick={minimizeCard}
               title="Minimize panel"
             >
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="4 14 10 14 10 20" />
-                <polyline points="20 10 14 10 14 4" />
-                <line x1="10" y1="14" x2="3" y2="21" />
-                <line x1="21" y1="3" x2="14" y2="10" />
-              </svg>
+              <Minus size={14} className="stroke-[2.5]" />
             </button>
 
             <button
