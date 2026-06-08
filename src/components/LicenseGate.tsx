@@ -52,6 +52,7 @@ export default function LicenseGate({ onValidated, isLight = false }: LicenseGat
       // Setup payload for Gumroad verification
       // We use URLSearchParams to match standard form-urlencoded parameters
       const params = new URLSearchParams();
+      params.append('product_id', 'P3VOJBoRd4rVh2dHSSv1bg==');
       params.append('product_permalink', permalink.trim() || 'app');
       params.append('license_key', cleanKey);
       params.append('increment_uses_count', 'true');
