@@ -64,7 +64,8 @@
     ],
     "win": {
       "target": [
-        "nsis"
+        "nsis",
+        "portable"
       ],
       "icon": "electron/icon.ico"
     },

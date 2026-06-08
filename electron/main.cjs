@@ -2,6 +2,11 @@ const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen } = require('elec
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
+// Set Application User Model ID for Windows 10/11 taskbar icon integration
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.overdesk.assistant');
+}
+
 // Configurable Production Hosted App URL for Silent Updates in Electron (Option 2)
 // This enables automatic hot updates to the frontend without requiring end-users to reinstall the app.
 const PRODUCTION_REMOTE_URL = 'https://ais-pre-ygovsfhsdgrmphae242d6v-579262669550.europe-west2.run.app';

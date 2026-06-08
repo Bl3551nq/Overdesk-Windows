@@ -150,8 +150,8 @@ export default function App() {
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Floating Mini-Icon Drag
-  const [miniX, setMiniX] = useState(() => Math.round(window.innerWidth - 60));
-  const [miniY, setMiniY] = useState(() => Math.round(window.innerHeight - 100));
+  const [miniX, setMiniX] = useState(() => Math.round(window.innerWidth - 68));
+  const [miniY, setMiniY] = useState(() => Math.round(window.innerHeight - 108));
   const [isDraggingMini, setIsDraggingMini] = useState(false);
   const miniDragOffset = useRef({ x: 0, y: 0 });
   const miniStartCoords = useRef({ x: 0, y: 0 });
@@ -204,8 +204,8 @@ export default function App() {
     const handleResize = () => {
       setPosX((prev) => Math.max(0, Math.min(window.innerWidth - cardWidth, prev)));
       setPosY((prev) => Math.max(0, Math.min(window.innerHeight - 100, prev)));
-      setMiniX((prev) => Math.max(10, Math.min(window.innerWidth - 52, prev)));
-      setMiniY((prev) => Math.max(10, Math.min(window.innerHeight - 52, prev)));
+      setMiniX((prev) => Math.max(10, Math.min(window.innerWidth - 58, prev)));
+      setMiniY((prev) => Math.max(10, Math.min(window.innerHeight - 58, prev)));
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -732,8 +732,8 @@ export default function App() {
     if (dx > 4 || dy > 4) {
       miniDidMove.current = true;
     }
-    const newX = Math.max(10, Math.min(window.innerWidth - 52, e.clientX - miniDragOffset.current.x));
-    const newY = Math.max(10, Math.min(window.innerHeight - 52, e.clientY - miniDragOffset.current.y));
+    const newX = Math.max(10, Math.min(window.innerWidth - 58, e.clientX - miniDragOffset.current.x));
+    const newY = Math.max(10, Math.min(window.innerHeight - 58, e.clientY - miniDragOffset.current.y));
     setMiniX(newX);
     setMiniY(newY);
   };
@@ -901,8 +901,8 @@ export default function App() {
                   position: 'fixed',
                   left: miniX,
                   top: miniY,
-                  width: '42px',
-                  height: '42px',
+                  width: '48px',
+                  height: '48px',
                   zIndex: 99999,
                 }}
                 className="select-none touch-none"
@@ -919,8 +919,8 @@ export default function App() {
                   }}
                   className="flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95 transition-transform duration-150 relative"
                   style={{
-                    width: '42px',
-                    height: '42px',
+                    width: '48px',
+                    height: '48px',
                     borderRadius: '50%',
                     backgroundColor: '#d9251c', // Deep solid target red
                     border: 'none',
@@ -928,7 +928,7 @@ export default function App() {
                   }}
                   title="Double click to Open Overdesk"
                 >
-                  <svg viewBox="0 0 100 100" className="w-6 h-6 text-white select-none pointer-events-none" stroke="currentColor" fill="none" strokeWidth="6">
+                  <svg viewBox="0 0 100 100" className="w-9 h-9 text-white select-none pointer-events-none" stroke="currentColor" fill="none" strokeWidth="6">
                     {/* Outer concentric white ring */}
                     <circle cx="50" cy="50" r="40" />
                     {/* Middle concentric white ring */}
