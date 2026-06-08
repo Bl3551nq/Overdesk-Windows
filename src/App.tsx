@@ -148,6 +148,14 @@ export default function App() {
   const [cardWidth, setCardWidth] = useState(320);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Floating Mini-Icon Drag
+  const [miniX, setMiniX] = useState(() => Math.round(window.innerWidth - 60));
+  const [miniY, setMiniY] = useState(() => Math.round(window.innerHeight - 100));
+  const [isDraggingMini, setIsDraggingMini] = useState(false);
+  const miniDragOffset = useRef({ x: 0, y: 0 });
+  const miniStartCoords = useRef({ x: 0, y: 0 });
+  const miniDidMove = useRef(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ cat: Category; rect: DOMRect } | null>(null);
   const [updaterMessage, setUpdaterMessage] = useState<string>('');
@@ -190,6 +198,18 @@ export default function App() {
       setIsIframe(true);
     }
   }, []);
+
+  // Keep card and floating mini in viewport on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setPosX((prev) => Math.max(0, Math.min(window.innerWidth - cardWidth, prev)));
+      setPosY((prev) => Math.max(0, Math.min(window.innerHeight - 100, prev)));
+      setMiniX((prev) => Math.max(10, Math.min(window.innerWidth - 52, prev)));
+      setMiniY((prev) => Math.max(10, Math.min(window.innerHeight - 52, prev)));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [cardWidth]);
 
   // Listen for auto-updater events in Electron
   useEffect(() => {
@@ -688,6 +708,50 @@ export default function App() {
     setIsDragging(false);
   };
 
+  /* Dragging handlers for mini bullseye icon */
+  const handleMiniPointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDraggingMini(true);
+    miniDidMove.current = false;
+    miniStartCoords.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+    miniDragOffset.current = {
+      x: e.clientX - miniX,
+      y: e.clientY - miniY,
+    };
+    warmAudioContext();
+  };
+
+  const handleMiniPointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingMini) return;
+    const dx = Math.abs(e.clientX - miniStartCoords.current.x);
+    const dy = Math.abs(e.clientY - miniStartCoords.current.y);
+    if (dx > 4 || dy > 4) {
+      miniDidMove.current = true;
+    }
+    const newX = Math.max(10, Math.min(window.innerWidth - 52, e.clientX - miniDragOffset.current.x));
+    const newY = Math.max(10, Math.min(window.innerHeight - 52, e.clientY - miniDragOffset.current.y));
+    setMiniX(newX);
+    setMiniY(newY);
+  };
+
+  const handleMiniPointerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+    setIsDraggingMini(false);
+  };
+
+  const handleMiniPointerCancel = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+    setIsDraggingMini(false);
+  };
+
   /* Left-side Resizing */
   const handleResizeDown = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -826,24 +890,53 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* Elegant floating open handle for non-Electron web preview */}
+          {/* Draggable Red Circular Target Icon (Bullseye, No Glow) when minimized */}
           <AnimatePresence>
             {isMinimized && !isElectron && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                className="fixed bottom-6 right-6 z-[9999]"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                style={{
+                  position: 'fixed',
+                  left: miniX,
+                  top: miniY,
+                  width: '42px',
+                  height: '42px',
+                  zIndex: 99999,
+                }}
+                className="select-none touch-none"
               >
-                <button
-                  onClick={() => setIsMinimized(false)}
-                  className="flex items-center gap-2.5 pl-3.5 pr-4.5 py-2.5 rounded-full bg-[var(--bg)] hover:bg-[var(--row-hover)] active:scale-95 text-[var(--text)] font-sans font-medium text-xs border border-[var(--divider)] shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all cursor-pointer"
+                <div
+                  onPointerDown={handleMiniPointerDown}
+                  onPointerMove={handleMiniPointerMove}
+                  onPointerUp={handleMiniPointerUp}
+                  onPointerCancel={handleMiniPointerCancel}
+                  onLostPointerCapture={handleMiniPointerCancel}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setIsMinimized(false);
+                  }}
+                  className="flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95 transition-transform duration-150 relative"
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    backgroundColor: '#d9251c', // Deep solid target red
+                    border: 'none',
+                    boxShadow: 'none', // Strict requirement: no glow
+                  }}
+                  title="Double click to Open Overdesk"
                 >
-                  <div className="text-violet-600 animate-pulse">
-                    <OverdeskLogo size={16} />
-                  </div>
-                  <span>Open Overdesk</span>
-                </button>
+                  <svg viewBox="0 0 100 100" className="w-6 h-6 text-white select-none pointer-events-none" stroke="currentColor" fill="none" strokeWidth="6">
+                    {/* Outer concentric white ring */}
+                    <circle cx="50" cy="50" r="40" />
+                    {/* Middle concentric white ring */}
+                    <circle cx="50" cy="50" r="22" strokeWidth="5.5" />
+                    {/* Small central solid white dot */}
+                    <circle cx="50" cy="50" r="7" fill="currentColor" stroke="none" />
+                  </svg>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
