@@ -33,7 +33,6 @@ import { TypewriterText } from './components/TypewriterText';
 import { OverdeskLogo } from './components/OverdeskLogo';
 import LicenseGate from './components/LicenseGate';
 import { OfflineVoiceEngine } from './utils/offlineVoice';
-import DailyGreetingToast from './components/DailyGreetingToast';
 
 const STORE_KEY = 'overdesk_react_v2';
 
@@ -1271,9 +1270,6 @@ export default function App() {
           onOpenAbout={openAbout}
           onOpenColorPicker={(cat, rect) => setColorPickerTarget({ cat, rect })}
         />
-        
-        {/* Elegant AI Daily Greeting voice-over overlay banner */}
-        <DailyGreetingToast isLight={isLight} />
       </div>
 
       {/* Floating temporary popup to select custom Category focus colors */}
