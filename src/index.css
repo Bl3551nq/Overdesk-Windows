@@ -90,6 +90,8 @@
   border-radius: 28px;
   pointer-events: none;
   z-index: -1;
+  clip-path: inset(0 round 28px);
+  -webkit-clip-path: inset(0 round 28px);
   background: 
     linear-gradient(135deg,
       rgba(255,255,255,0.14) 0%,
