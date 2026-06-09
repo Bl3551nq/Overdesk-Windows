@@ -550,8 +550,8 @@ export default function App() {
     const resizeObserver = new ResizeObserver(() => {
       const rect = cardEl.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        // Send size + 56px (28px padding on each side to cleanly host the rounded card border and drop shadow glow without clipping)
-        (window as any).electronAPI.resizeWindow(rect.width + 56, rect.height + 56);
+        // Send size + 120px (60px padding on each side to cleanly host the rounded card border and drop shadow glow without clipping)
+        (window as any).electronAPI.resizeWindow(rect.width + 120, rect.height + 120);
       }
     });
 
