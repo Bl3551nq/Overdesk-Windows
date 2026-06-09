@@ -340,10 +340,11 @@ export default function App() {
 
   // Start timer automatically when task slides
   const startTimerForTask = () => {
-    setTimerSeconds(0);
     setTimerRunning(true);
-    const now = new Date();
-    setTimerStartedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    if (!timerStartedAt) {
+      const now = new Date();
+      setTimerStartedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }
   };
 
   useEffect(() => {
@@ -564,7 +565,15 @@ export default function App() {
 
   // Dynamic card auto-resizing IPC for Electron
   useEffect(() => {
-    if (!isElectron || isMinimized || !isActivated) return;
+    if (!isElectron || !isActivated) return;
+
+    if (isMinimized) {
+      try {
+        (window as any).electronAPI.resizeWindow(80, 80);
+      } catch (err) {}
+      return;
+    }
+
     const cardEl = cardRef.current;
     if (!cardEl) return;
 
@@ -674,6 +683,8 @@ export default function App() {
     if (isDone) {
       setIsDone(false);
       setStep(0);
+      setTimerSeconds(0);
+      setTimerRunning(true);
       playTick(soundOn);
       return;
     }
@@ -814,14 +825,6 @@ export default function App() {
   };
 
   const minimizeCard = () => {
-    if (isElectron) {
-      try {
-        if ((window as any).electronAPI?.minimize) {
-          (window as any).electronAPI.minimize();
-          return;
-        }
-      } catch (err) {}
-    }
     setIsMinimized(true);
   };
 
@@ -929,12 +932,23 @@ export default function App() {
         <>
           {/* Draggable Red Circular Target Icon (Bullseye, No Glow) when minimized */}
           <AnimatePresence>
-            {isMinimized && !isElectron && (
+            {isMinimized && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                style={{
+                style={isElectron ? {
+                  position: 'fixed',
+                  left: 0,
+                  top: 0,
+                  width: '80px',
+                  height: '80px',
+                  zIndex: 99999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  WebkitAppRegion: 'drag',
+                } : {
                   position: 'fixed',
                   left: miniX,
                   top: miniY,
@@ -945,11 +959,11 @@ export default function App() {
                 className="select-none touch-none"
               >
                 <div
-                  onPointerDown={handleMiniPointerDown}
-                  onPointerMove={handleMiniPointerMove}
-                  onPointerUp={handleMiniPointerUp}
-                  onPointerCancel={handleMiniPointerCancel}
-                  onLostPointerCapture={handleMiniPointerCancel}
+                  onPointerDown={isElectron ? undefined : handleMiniPointerDown}
+                  onPointerMove={isElectron ? undefined : handleMiniPointerMove}
+                  onPointerUp={isElectron ? undefined : handleMiniPointerUp}
+                  onPointerCancel={isElectron ? undefined : handleMiniPointerCancel}
+                  onLostPointerCapture={isElectron ? undefined : handleMiniPointerCancel}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setIsMinimized(false);
@@ -962,6 +976,7 @@ export default function App() {
                     backgroundColor: '#d9251c', // Deep solid target red
                     border: 'none',
                     boxShadow: 'none', // Strict requirement: no glow
+                    WebkitAppRegion: isElectron ? 'no-drag' : undefined,
                   }}
                   title="Double click to Open Overdesk"
                 >
