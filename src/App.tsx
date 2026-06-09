@@ -580,8 +580,8 @@ export default function App() {
     const resizeObserver = new ResizeObserver(() => {
       const rect = cardEl.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        // Send size + 120px (60px padding on each side to cleanly host the rounded card border and drop shadow glow without clipping)
-        (window as any).electronAPI.resizeWindow(rect.width + 120, rect.height + 120);
+        // Send width + 120px (60px left/right padding) and height + 180px (90px top/bottom padding) to host the large soft drop shadow perfectly without bottom clipping
+        (window as any).electronAPI.resizeWindow(rect.width + 120, rect.height + 180);
       }
     });
 
@@ -759,6 +759,15 @@ export default function App() {
   /* Dragging handlers for mini bullseye icon */
   const handleMiniPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.startWindowDrag) {
+          (window as any).electronAPI.startWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(true);
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDraggingMini(true);
     miniDidMove.current = false;
@@ -774,6 +783,7 @@ export default function App() {
   };
 
   const handleMiniPointerMove = (e: React.PointerEvent) => {
+    if (isElectron) return;
     if (!isDraggingMini) return;
     const dx = Math.abs(e.clientX - miniStartCoords.current.x);
     const dy = Math.abs(e.clientY - miniStartCoords.current.y);
@@ -787,6 +797,15 @@ export default function App() {
   };
 
   const handleMiniPointerUp = (e: React.PointerEvent) => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.endWindowDrag) {
+          (window as any).electronAPI.endWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(false);
+      return;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
@@ -794,6 +813,15 @@ export default function App() {
   };
 
   const handleMiniPointerCancel = (e: React.PointerEvent) => {
+    if (isElectron) {
+      try {
+        if ((window as any).electronAPI?.endWindowDrag) {
+          (window as any).electronAPI.endWindowDrag();
+        }
+      } catch (err) {}
+      setIsDraggingMini(false);
+      return;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
@@ -947,7 +975,6 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  WebkitAppRegion: 'drag',
                 } : {
                   position: 'fixed',
                   left: miniX,
@@ -959,11 +986,11 @@ export default function App() {
                 className="select-none touch-none"
               >
                 <div
-                  onPointerDown={isElectron ? undefined : handleMiniPointerDown}
-                  onPointerMove={isElectron ? undefined : handleMiniPointerMove}
-                  onPointerUp={isElectron ? undefined : handleMiniPointerUp}
-                  onPointerCancel={isElectron ? undefined : handleMiniPointerCancel}
-                  onLostPointerCapture={isElectron ? undefined : handleMiniPointerCancel}
+                  onPointerDown={handleMiniPointerDown}
+                  onPointerMove={handleMiniPointerMove}
+                  onPointerUp={handleMiniPointerUp}
+                  onPointerCancel={handleMiniPointerCancel}
+                  onLostPointerCapture={handleMiniPointerCancel}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setIsMinimized(false);
@@ -976,7 +1003,6 @@ export default function App() {
                     backgroundColor: '#d9251c', // Deep solid target red
                     border: 'none',
                     boxShadow: 'none', // Strict requirement: no glow
-                    WebkitAppRegion: isElectron ? 'no-drag' : undefined,
                   }}
                   title="Double click to Open Overdesk"
                 >
