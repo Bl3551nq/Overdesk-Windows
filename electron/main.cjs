@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen, nativeImage } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
@@ -14,10 +14,24 @@ const PRODUCTION_REMOTE_URL = 'https://ais-pre-ygovsfhsdgrmphae242d6v-5792626695
 let mainWindow;
 let tray = null;
 
+function getIcon() {
+  // Always use the high-res ICO on Windows for taskbar — nativeImage ensures
+  // Windows picks the largest embedded resolution instead of defaulting to 16x16
+  if (process.platform === 'win32') {
+    return nativeImage.createFromPath(path.join(__dirname, 'icon.ico'));
+  }
+  return path.join(__dirname, 'icon.png');
+}
+
 function createTray() {
   const iconPath = path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png');
   try {
-    tray = new Tray(iconPath);
+    // Use nativeImage for tray on Windows so it picks the correct 16x16/32x32 layer
+    const trayIcon = process.platform === 'win32'
+      ? nativeImage.createFromPath(iconPath)
+      : iconPath;
+
+    tray = new Tray(trayIcon);
     const contextMenu = Menu.buildFromTemplate([
       { 
         label: 'Show Overdesk', 
@@ -68,6 +82,8 @@ function createTray() {
 }
 
 function createWindow() {
+  const icon = getIcon();
+
   mainWindow = new BrowserWindow({
     width: 380,
     height: 520,
@@ -79,13 +95,18 @@ function createWindow() {
     frame: false,
     alwaysOnTop: true,
     hasShadow: false, // Disabling native shadow avoids Windows drop shadow bounding boxes clipping the transparent rounded card
-    icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+    icon: icon,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  // Force Windows taskbar to use the full-size icon from the ICO file
+  if (process.platform === 'win32') {
+    mainWindow.setIcon(nativeImage.createFromPath(path.join(__dirname, 'icon.ico')));
+  }
 
   // Enable always-on-top over other full-screen apps on macOS if needed
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -328,4 +349,3 @@ app.whenReady().then(() => {
     });
   }, 4 * 60 * 60 * 1000);
 });
-
