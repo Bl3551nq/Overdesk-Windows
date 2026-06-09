@@ -144,8 +144,17 @@ export default function App() {
   });
 
   // UI state
-  const [posX, setPosX] = useState(() => Math.round((window.innerWidth - 320) / 2));
-  const [posY, setPosY] = useState(() => Math.round((window.innerHeight - 380) / 2));
+  const [posX, setPosX] = useState(() => {
+    const space = window.innerWidth - 320;
+    if (space > 80) return Math.round(space / 2);
+    return 10;
+  });
+  const [posY, setPosY] = useState(() => {
+    const cardEstHeight = 220;
+    const space = window.innerHeight - cardEstHeight;
+    if (space > 110) return Math.round((space - 28) / 2);
+    return 10;
+  });
   const [cardWidth, setCardWidth] = useState(320);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -203,8 +212,20 @@ export default function App() {
   // Keep card and floating mini in viewport on window resize
   useEffect(() => {
     const handleResize = () => {
-      setPosX((prev) => Math.max(0, Math.min(window.innerWidth - cardWidth, prev)));
-      setPosY((prev) => Math.max(0, Math.min(window.innerHeight - 100, prev)));
+      const cardH = cardRef.current?.offsetHeight || 220;
+      setPosX((prev) => {
+        const margin = 40;
+        const maxBarX = window.innerWidth - cardWidth - margin;
+        if (maxBarX <= margin) return Math.max(0, Math.min(window.innerWidth - cardWidth, prev));
+        return Math.max(margin, Math.min(maxBarX, prev));
+      });
+      setPosY((prev) => {
+        const marginTop = 40;
+        const marginBottom = 68;
+        const maxBarY = window.innerHeight - cardH - marginBottom;
+        if (maxBarY <= marginTop) return Math.max(0, Math.min(window.innerHeight - cardH, prev));
+        return Math.max(marginTop, Math.min(maxBarY, prev));
+      });
       setMiniX((prev) => Math.max(10, Math.min(window.innerWidth - 58, prev)));
       setMiniY((prev) => Math.max(10, Math.min(window.innerHeight - 58, prev)));
     };
@@ -699,10 +720,25 @@ export default function App() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    const newX = Math.max(0, Math.min(window.innerWidth - cardWidth, e.clientX - dragOffset.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y));
-    setPosX(newX);
-    setPosY(newY);
+    const cardH = cardRef.current?.offsetHeight || 220;
+    const rawX = e.clientX - dragOffset.current.x;
+    const rawY = e.clientY - dragOffset.current.y;
+    
+    const margin = 40;
+    const maxBarX = window.innerWidth - cardWidth - margin;
+    const clampedX = maxBarX <= margin 
+      ? Math.max(0, Math.min(window.innerWidth - cardWidth, rawX))
+      : Math.max(margin, Math.min(maxBarX, rawX));
+
+    const marginTop = 40;
+    const marginBottom = 68;
+    const maxBarY = window.innerHeight - cardH - marginBottom;
+    const clampedY = maxBarY <= marginTop
+      ? Math.max(0, Math.min(window.innerHeight - cardH, rawY))
+      : Math.max(marginTop, Math.min(maxBarY, rawY));
+
+    setPosX(clampedX);
+    setPosY(clampedY);
   };
 
   const handlePointerUp = () => {
