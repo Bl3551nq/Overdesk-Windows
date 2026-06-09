@@ -33,23 +33,16 @@
   width: 320px;
   border-radius: 28px;
   padding: 12px 18px 14px;
-  background: linear-gradient(155deg,
-      rgba(0,10,45,0.95)   0%,
-      rgba(2,5,18,0.98)    28%,
-      rgba(1,8,32,0.97)    58%,
-      rgba(0,8,40,0.96)    100%
-    );
-  backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
-  -webkit-backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
   border-top: 1px solid rgba(255,255,255,0.22);
   border-right: 1px solid rgba(255,255,255,0.28);
   border-bottom: 1px solid rgba(255,255,255,0.07);
   border-left: 1px solid rgba(255,255,255,0.05);
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.45),
-    0 16px 38px rgba(0, 0, 0, 0.55),
-    0 32px 70px rgba(0, 0, 0, 0.65),
-    0 0 40px rgba(139, 92, 246, 0.15) !important;
+    0 12px 32px rgba(0, 0, 0, 0.40),
+    0 4px 12px rgba(0, 0, 0, 0.20) !important;
   transition: background 0.3s ease, border-color 0.3s ease, width 0.1s ease;
   animation: cardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
 }
@@ -61,7 +54,7 @@
 
 /* Light Theme overrides */
 .card-shell.light_mode {
-  background: #ffffff;
+  background: #ffffff !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
@@ -69,10 +62,8 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.14);
   border-left: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.03),
-    0 12px 24px rgba(0, 0, 0, 0.05),
-    0 24px 48px rgba(0, 0, 0, 0.07),
-    0 36px 72px rgba(0, 0, 0, 0.04) !important;
+    0 8px 24px rgba(0, 0, 0, 0.05),
+    0 2px 6px rgba(0, 0, 0, 0.04) !important;
   --text: #000000;
   --text-dim: rgba(0, 0, 0, 0.45);
   --text-mid: rgba(0, 0, 0, 0.72);
@@ -91,20 +82,29 @@
   --select-text: #000000;
 }
 
-/* Glassy highlight edge */
+/* Glassy highlight edge and blurred drop background */
 .card-shell::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 28px;
   pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(135deg,
-    rgba(255,255,255,0.14) 0%,
-    rgba(255,255,255,0.05) 25%,
-    transparent 55%,
-    rgba(255,255,255,0.03) 100%
-  );
+  z-index: -1;
+  background: 
+    linear-gradient(135deg,
+      rgba(255,255,255,0.14) 0%,
+      rgba(255,255,255,0.05) 25%,
+      transparent 55%,
+      rgba(255,255,255,0.03) 100%
+    ),
+    linear-gradient(155deg,
+      rgba(0,10,45,0.95)   0%,
+      rgba(2,5,18,0.98)    28%,
+      rgba(1,8,32,0.97)    58%,
+      rgba(0,8,40,0.96)    100%
+    );
+  backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
+  -webkit-backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
 }
 
 .card-shell.light_mode::before {
