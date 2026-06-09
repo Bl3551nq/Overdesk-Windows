@@ -213,9 +213,17 @@ ipcMain.on('window-set-always-on-top', (event, flag) => {
 // Dynamic resizing handler to fit rounded card contents & drop shadow Glow perfectly
 ipcMain.on('window-resize', (event, width, height) => {
   if (mainWindow) {
-    const w = Math.max(240, Math.min(600, Math.round(width)));
-    const h = Math.max(280, Math.min(1000, Math.round(height)));
-    mainWindow.setSize(w, h);
+    const targetW = Math.round(width);
+    const targetH = Math.round(height);
+    if (targetW <= 120 && targetH <= 120) {
+      mainWindow.setMinimumSize(targetW, targetH);
+      mainWindow.setSize(targetW, targetH);
+    } else {
+      mainWindow.setMinimumSize(240, 280);
+      const w = Math.max(240, Math.min(600, targetW));
+      const h = Math.max(280, Math.min(1000, targetH));
+      mainWindow.setSize(w, h);
+    }
   }
 });
 
