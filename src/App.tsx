@@ -185,6 +185,17 @@ export default function App() {
   const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI;
   const lastIgnoreRef = useRef<boolean | null>(null);
 
+  const activateInteraction = () => {
+    if (isElectron) {
+      if (lastIgnoreRef.current !== false) {
+        lastIgnoreRef.current = false;
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+    }
+  };
+
   // Timer run variables
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -596,14 +607,39 @@ export default function App() {
     if (!isElectron || !isActivated) return;
 
     if (isMinimized) {
-      // In minimized widget mode, ensure mouse interaction works perfectly over the 80x80 widget
-      if (lastIgnoreRef.current !== false) {
-        lastIgnoreRef.current = false;
-        try {
-          (window as any).electronAPI.setIgnoreMouseEvents(false);
-        } catch (err) {}
-      }
-      return;
+      // In minimized widget mode, ensure mouse interaction works over the 48px circular target
+      // but is ignored/click-through outside the circular radius (25px radius from center 40,40)
+      const handleMinimizedMouseMove = (e: MouseEvent) => {
+        const dx = e.clientX - 40;
+        const dy = e.clientY - 40;
+        const isInsideCircle = (dx * dx + dy * dy) <= 25 * 25;
+
+        if (isInsideCircle) {
+          if (lastIgnoreRef.current !== false) {
+            lastIgnoreRef.current = false;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(false);
+            } catch (err) {}
+          }
+        } else {
+          if (lastIgnoreRef.current !== true) {
+            lastIgnoreRef.current = true;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
+            } catch (err) {}
+          }
+        }
+      };
+
+      window.addEventListener('mousemove', handleMinimizedMouseMove);
+      return () => {
+        window.removeEventListener('mousemove', handleMinimizedMouseMove);
+        if (isElectron) {
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(false);
+          } catch (err) {}
+        }
+      };
     }
 
     const handleWindowMouseMove = (e: MouseEvent) => {
@@ -991,6 +1027,8 @@ export default function App() {
                   onPointerUp={handleMiniPointerUp}
                   onPointerCancel={handleMiniPointerCancel}
                   onLostPointerCapture={handleMiniPointerCancel}
+                  onMouseEnter={activateInteraction}
+                  onPointerOver={activateInteraction}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setIsMinimized(false);
@@ -1029,7 +1067,14 @@ export default function App() {
           top: isElectron ? undefined : `${posY}px`,
           width: `${cardWidth}px`,
         }}
-        onPointerDown={isElectron ? undefined : handlePointerDown}
+        onMouseEnter={activateInteraction}
+        onPointerOver={activateInteraction}
+        onPointerDown={(e) => {
+          activateInteraction();
+          if (!isElectron) {
+            handlePointerDown(e);
+          }
+        }}
         onPointerMove={isElectron ? undefined : handlePointerMove}
         onPointerUp={isElectron ? undefined : handlePointerUp}
       >

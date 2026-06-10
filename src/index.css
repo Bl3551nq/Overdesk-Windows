@@ -58,14 +58,12 @@
   background: #ffffff !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
-  border-left: 1px solid rgba(0, 0, 0, 0.05);
+  border: 2px solid #cbd5e1;
   box-shadow: 
-    0 4px 10px rgba(0, 0, 0, 0.02),
-    0 12px 28px rgba(0, 0, 0, 0.04),
-    0 24px 48px rgba(0, 0, 0, 0.03) !important;
+    inset 0 1.5px 0px rgba(255, 255, 255, 0.95), 
+    inset 0 -1.5px 0px rgba(0, 0, 0, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 14px 40px rgba(0, 0, 0, 0.06) !important;
   --text: #000000;
   --text-dim: rgba(0, 0, 0, 0.45);
   --text-mid: rgba(0, 0, 0, 0.72);
