@@ -1,5 +1,6 @@
 import React from 'react';
-import overdeskLogoUrl from '../overdesk.svg';
+
+const overdeskLogoUrl = 'https://raw.githubusercontent.com/Bl3551nq/Overdesk-Logos/refs/heads/main/overdesk.svg';
 
 interface OverdeskLogoProps {
   className?: string;

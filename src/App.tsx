@@ -30,7 +30,6 @@ import AboutOverlay from './components/AboutOverlay';
 import ColorPickerPopup from './components/ColorPickerPopup';
 import AutoUpdaterPopup from './components/AutoUpdaterPopup';
 import { TypewriterText } from './components/TypewriterText';
-import { OverdeskLogo } from './components/OverdeskLogo';
 import LicenseGate from './components/LicenseGate';
 import { OfflineVoiceEngine } from './utils/offlineVoice';
 

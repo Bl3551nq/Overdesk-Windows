@@ -318,7 +318,8 @@ body {
 .top-bar label, 
 .top-bar .theme-switch,
 .top-bar span,
-.top-bar svg {
+.top-bar svg,
+.top-bar img {
   -webkit-app-region: no-drag;
 }
 
