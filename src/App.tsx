@@ -157,6 +157,13 @@ export default function App() {
   const [cardWidth, setCardWidth] = useState(320);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [panelScale, setPanelScale] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) return JSON.parse(saved).panelScale ?? 1;
+    } catch (e) {}
+    return 1;
+  });
 
   // Floating Mini-Icon Drag
   const [miniX, setMiniX] = useState(() => Math.round(window.innerWidth - 68));
@@ -293,10 +300,10 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible
+        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, panelScale
       }));
     } catch (e) {}
-  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible]);
+  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, panelScale]);
 
   // Accent Color implementation in CSS (Presets + Custom)
   useEffect(() => {
@@ -587,19 +594,35 @@ export default function App() {
     const cardEl = cardRef.current;
     if (!cardEl) return;
 
+    let lastWidth = 0;
+    let lastHeight = 0;
+    let resizeTimeout: NodeJS.Timeout | null = null;
+
     const resizeObserver = new ResizeObserver(() => {
       const rect = cardEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        // Send width + 120px (60px left/right padding) and height + 180px (90px top/bottom padding) to host the large soft drop shadow perfectly without bottom clipping
-        (window as any).electronAPI.resizeWindow(rect.width + 120, rect.height + 180);
+      const targetW = Math.round(rect.width);
+      const targetH = Math.round(rect.height);
+
+      if (targetW > 0 && targetH > 0) {
+        if (targetW === lastWidth && targetH === lastHeight) return;
+        lastWidth = targetW;
+        lastHeight = targetH;
+
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          try {
+            (window as any).electronAPI.resizeWindow(targetW + 120, targetH + 180);
+          } catch (err) {}
+        }, 50); // 50ms protective debounce avoids layout loop crashes
       }
     });
 
     resizeObserver.observe(cardEl);
     return () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
     };
-  }, [isElectron, isMinimized, isActivated]);
+  }, [isElectron, isMinimized, isActivated, cardWidth, panelScale]);
 
   // Toggle ignoring click-through on transparent padding space outside the app card in Electron
   useEffect(() => {
@@ -794,6 +817,9 @@ export default function App() {
   /* Dragging handlers for mini bullseye icon */
   const handleMiniPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
     if (isElectron) {
       try {
         if ((window as any).electronAPI?.startWindowDrag) {
@@ -803,7 +829,6 @@ export default function App() {
       setIsDraggingMini(true);
       return;
     }
-    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDraggingMini(true);
     miniDidMove.current = false;
     miniStartCoords.current = {
@@ -832,6 +857,9 @@ export default function App() {
   };
 
   const handleMiniPointerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     if (isElectron) {
       try {
         if ((window as any).electronAPI?.endWindowDrag) {
@@ -841,13 +869,13 @@ export default function App() {
       setIsDraggingMini(false);
       return;
     }
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {}
     setIsDraggingMini(false);
   };
 
   const handleMiniPointerCancel = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     if (isElectron) {
       try {
         if ((window as any).electronAPI?.endWindowDrag) {
@@ -857,9 +885,6 @@ export default function App() {
       setIsDraggingMini(false);
       return;
     }
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (err) {}
     setIsDraggingMini(false);
   };
 
@@ -889,6 +914,15 @@ export default function App() {
 
   const minimizeCard = () => {
     setIsMinimized(true);
+  };
+
+  const restoreCard = () => {
+    if (isElectron) {
+      try {
+        (window as any).electronAPI.resizeWindow(Math.round((cardWidth + 120) * panelScale), Math.round(520 * panelScale));
+      } catch (err) {}
+    }
+    setIsMinimized(false);
   };
 
   const toggleEdit = () => {
@@ -1030,7 +1064,7 @@ export default function App() {
                   onPointerOver={activateInteraction}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
-                    setIsMinimized(false);
+                    restoreCard();
                   }}
                   className="flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95 transition-transform duration-150 relative"
                   style={{
@@ -1065,7 +1099,8 @@ export default function App() {
           left: isElectron ? undefined : `${posX}px`,
           top: isElectron ? undefined : `${posY}px`,
           width: `${cardWidth}px`,
-        }}
+          zoom: panelScale,
+        } as React.CSSProperties}
         onMouseEnter={activateInteraction}
         onPointerOver={activateInteraction}
         onPointerDown={(e) => {
@@ -1390,6 +1425,8 @@ export default function App() {
           onResetApp={resetApp}
           onOpenAbout={openAbout}
           onOpenColorPicker={(cat, rect) => setColorPickerTarget({ cat, rect })}
+          panelScale={panelScale}
+          onChangeScale={setPanelScale}
         />
       </div>
 

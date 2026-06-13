@@ -79,11 +79,13 @@ function createWindow() {
     frame: false,
     alwaysOnTop: true,
     hasShadow: false, // Disabling native shadow avoids Windows drop shadow bounding boxes clipping the transparent rounded card
+    acceptFirstMouse: true, // Clicking on inactive window triggers actions immediately
     icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
+      backgroundThrottling: false, // Keep event loop running smoothly so blurred hover is immediate
     },
   });
 

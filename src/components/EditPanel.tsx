@@ -27,6 +27,8 @@ interface EditPanelProps {
   onResetApp: () => void;
   onOpenAbout: () => void;
   onOpenColorPicker: (cat: Category, rect: DOMRect) => void;
+  panelScale: number;
+  onChangeScale: (scale: number) => void;
 }
 
 export default function EditPanel({
@@ -53,6 +55,8 @@ export default function EditPanel({
   onResetApp,
   onOpenAbout,
   onOpenColorPicker,
+  panelScale,
+  onChangeScale,
 }: EditPanelProps) {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -379,6 +383,46 @@ export default function EditPanel({
         <div className="flex items-center justify-between text-xs py-0.5">
           <span className="text-[var(--text-mid)] font-medium">Accent color</span>
           <div className="flex gap-1" id="accent-swatches" />
+        </div>
+
+        {/* Panel Scale Setting */}
+        <div className="flex items-center justify-between text-xs py-0.5">
+          <div className="flex flex-col">
+            <span className="text-[var(--text-mid)] font-medium">Panel scale</span>
+            <span className="text-[10px] text-[var(--text-dim)]">Presets: x1, x1.2, x1.5</span>
+          </div>
+          <div className="flex items-center gap-1 bg-[var(--row-bg)] border border-[var(--input-border)] rounded-xl p-0.5">
+            <button
+              onClick={() => onChangeScale(1)}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all duration-150 ${
+                panelScale === 1
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+              }`}
+            >
+              x1
+            </button>
+            <button
+              onClick={() => onChangeScale(1.2)}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all duration-150 ${
+                panelScale === 1.2
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+              }`}
+            >
+              x1.2
+            </button>
+            <button
+              onClick={() => onChangeScale(1.5)}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all duration-150 ${
+                panelScale === 1.5
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+              }`}
+            >
+              x1.5
+            </button>
+          </div>
         </div>
 
         {/* Visibility Setting */}
