@@ -7,6 +7,7 @@ interface ColorPickerPopupProps {
   onSelect: (color: string) => void;
   onClose: () => void;
   isLight: boolean;
+  panelScale?: number;
 }
 
 export default function ColorPickerPopup({
@@ -16,12 +17,14 @@ export default function ColorPickerPopup({
   onSelect,
   onClose,
   isLight,
+  panelScale = 1,
 }: ColorPickerPopupProps) {
   if (!isOpen || !triggerRect) return null;
 
   // Position relative to triggering color dot
+  // Account for scale of triggerRect coordinate measurements
   const top = triggerRect.bottom + 6;
-  const left = Math.min(triggerRect.left, window.innerWidth - 185);
+  const left = Math.min(triggerRect.left, window.innerWidth - 185 * panelScale);
 
   return (
     <>
@@ -36,6 +39,7 @@ export default function ColorPickerPopup({
           background: isLight ? '#ffffff' : 'rgba(8, 12, 36, 0.92)',
           borderColor: isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)',
           boxShadow: 'none',
+          zoom: panelScale,
         }}
       >
         {CAT_COLORS.map((col) => (

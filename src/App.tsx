@@ -231,14 +231,14 @@ export default function App() {
     const handleResize = () => {
       const cardH = cardRef.current?.offsetHeight || 220;
       setPosX((prev) => {
-        const margin = 40;
+        const margin = 0;
         const maxBarX = window.innerWidth - cardWidth - margin;
         if (maxBarX <= margin) return Math.max(0, Math.min(window.innerWidth - cardWidth, prev));
         return Math.max(margin, Math.min(maxBarX, prev));
       });
       setPosY((prev) => {
-        const marginTop = 40;
-        const marginBottom = 68;
+        const marginTop = 0;
+        const marginBottom = 0;
         const maxBarY = window.innerHeight - cardH - marginBottom;
         if (maxBarY <= marginTop) return Math.max(0, Math.min(window.innerHeight - cardH, prev));
         return Math.max(marginTop, Math.min(maxBarY, prev));
@@ -629,9 +629,17 @@ export default function App() {
     if (!isElectron || !isActivated) return;
 
     if (isMinimized) {
-      // In minimized widget mode, ensure mouse interaction works over the 48px circular target
-      // but is ignored/click-through outside the circular radius (25px radius from center 40,40)
       const handleMinimizedMouseMove = (e: MouseEvent) => {
+        if (isDraggingMini) {
+          if (lastIgnoreRef.current !== false) {
+            lastIgnoreRef.current = false;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(false);
+            } catch (err) {}
+          }
+          return;
+        }
+
         const dx = e.clientX - 40;
         const dy = e.clientY - 40;
         const isInsideCircle = (dx * dx + dy * dy) <= 25 * 25;
@@ -662,56 +670,60 @@ export default function App() {
           } catch (err) {}
         }
       };
+    } else {
+      const handleWindowMouseMove = (e: MouseEvent) => {
+        if (isDragging || isResizing || isDraggingMini) {
+          if (lastIgnoreRef.current !== false) {
+            lastIgnoreRef.current = false;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(false);
+            } catch (err) {}
+          }
+          return;
+        }
+
+        const cardEl = cardRef.current;
+        if (!cardEl) return;
+
+        const rect = cardEl.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+
+        const isInside = (
+          x >= rect.left &&
+          x <= rect.right &&
+          y >= rect.top &&
+          y <= rect.bottom
+        );
+
+        if (isInside) {
+          if (lastIgnoreRef.current !== false) {
+            lastIgnoreRef.current = false;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(false);
+            } catch (err) {}
+          }
+        } else {
+          if (lastIgnoreRef.current !== true) {
+            lastIgnoreRef.current = true;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
+            } catch (err) {}
+          }
+        }
+      };
+
+      window.addEventListener('mousemove', handleWindowMouseMove);
+      return () => {
+        window.removeEventListener('mousemove', handleWindowMouseMove);
+        if (isElectron) {
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(false);
+          } catch (err) {}
+        }
+      };
     }
-
-    const handleWindowMouseMove = (e: MouseEvent) => {
-      // If full screen overlays are open, ensure the entire window is interactive
-      if (isAboutOpen || !!colorPickerTarget) {
-        if (lastIgnoreRef.current !== false) {
-          lastIgnoreRef.current = false;
-          (window as any).electronAPI.setIgnoreMouseEvents(false);
-        }
-        return;
-      }
-
-      const cardEl = cardRef.current;
-      if (!cardEl) return;
-
-      const rect = cardEl.getBoundingClientRect();
-      const x = e.clientX;
-      const y = e.clientY;
-
-      // Check if mouse is within the visual card element
-      const isInside = (
-        x >= rect.left &&
-        x <= rect.right &&
-        y >= rect.top &&
-        y <= rect.bottom
-      );
-
-      if (isInside) {
-        if (lastIgnoreRef.current !== false) {
-          lastIgnoreRef.current = false;
-          (window as any).electronAPI.setIgnoreMouseEvents(false);
-        }
-      } else {
-        if (lastIgnoreRef.current !== true) {
-          lastIgnoreRef.current = true;
-          (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
-        }
-      }
-    };
-
-    window.addEventListener('mousemove', handleWindowMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleWindowMouseMove);
-      if (isElectron) {
-        try {
-          (window as any).electronAPI.setIgnoreMouseEvents(false);
-        } catch (err) {}
-      }
-    };
-  }, [isElectron, isMinimized, isActivated, isAboutOpen, colorPickerTarget]);
+  }, [isElectron, isMinimized, isActivated, isDragging, isResizing, isDraggingMini]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -793,14 +805,14 @@ export default function App() {
     const rawX = e.clientX - dragOffset.current.x;
     const rawY = e.clientY - dragOffset.current.y;
     
-    const margin = 40;
+    const margin = 0;
     const maxBarX = window.innerWidth - cardWidth - margin;
     const clampedX = maxBarX <= margin 
       ? Math.max(0, Math.min(window.innerWidth - cardWidth, rawX))
       : Math.max(margin, Math.min(maxBarX, rawX));
 
-    const marginTop = 40;
-    const marginBottom = 68;
+    const marginTop = 0;
+    const marginBottom = 0;
     const maxBarY = window.innerHeight - cardH - marginBottom;
     const clampedY = maxBarY <= marginTop
       ? Math.max(0, Math.min(window.innerHeight - cardH, rawY))
@@ -900,8 +912,8 @@ export default function App() {
 
   const handleResizeMove = (e: React.PointerEvent) => {
     if (!isResizing) return;
-    const dx = resizeStartX.current - e.clientX; // drag left to increase width, right to decrease
-    setCardWidth(Math.min(480, Math.max(230, resizeStartWidth.current + dx)));
+    const dx = (resizeStartX.current - e.clientX) / panelScale; // drag left to increase width, right to decrease
+    setCardWidth(Math.min(480, Math.max(230, Math.round(resizeStartWidth.current + dx))));
   };
 
   const handleResizeUp = () => {
@@ -1436,6 +1448,7 @@ export default function App() {
         activeColor={colorPickerTarget?.cat.color || ''}
         triggerRect={colorPickerTarget?.rect || null}
         isLight={isLight}
+        panelScale={panelScale}
         onSelect={(newCol) => {
           if (!colorPickerTarget) return;
           const next = categories.map((c) => {

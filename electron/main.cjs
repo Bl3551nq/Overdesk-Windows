@@ -2,6 +2,20 @@ const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen } = require('elec
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
+// Enforce single instance lock to prevent duplicate backend processes and enable taskbar restoration
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 // Set Application User Model ID for Windows 10/11 taskbar icon integration
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.overdesk.assistant');
@@ -72,9 +86,9 @@ function createWindow() {
     width: 380,
     height: 520,
     minWidth: 240,
-    maxWidth: 600,
+    maxWidth: 1000,
     minHeight: 280,
-    maxHeight: 1000,
+    maxHeight: 1600,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -183,7 +197,10 @@ app.whenReady().then(() => {
   createTray();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    } else if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
@@ -222,8 +239,8 @@ ipcMain.on('window-resize', (event, width, height) => {
       mainWindow.setSize(targetW, targetH);
     } else {
       mainWindow.setMinimumSize(240, 280);
-      const w = Math.max(240, Math.min(600, targetW));
-      const h = Math.max(280, Math.min(1000, targetH));
+      const w = Math.max(240, Math.min(1000, targetW));
+      const h = Math.max(280, Math.min(1600, targetH));
       mainWindow.setSize(w, h);
     }
   }
