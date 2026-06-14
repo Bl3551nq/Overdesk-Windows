@@ -63,7 +63,6 @@
       "electron/**/*"
     ],
     "win": {
-      "publisherName": "Overdesk",
       "target": [
         "nsis"
       ],
