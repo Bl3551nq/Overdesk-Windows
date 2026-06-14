@@ -624,19 +624,21 @@ export default function App() {
     };
   }, [isElectron, isMinimized, isActivated, cardWidth, panelScale]);
 
-  // Robust and clickable window states in Electron: kept fully interactive at all times
+  // Robust and clickable window states in Electron: kept fully interactive over cards and click-through on transparent padding/shadow areas
   useEffect(() => {
     if (!isElectron || !isActivated) return;
 
-    if (lastIgnoreRef.current !== false) {
-      lastIgnoreRef.current = false;
-      try {
-        (window as any).electronAPI.setIgnoreMouseEvents(false);
-      } catch (err) {}
+    // Direct click-through bypass for minimized state (window is exactly 80x80 pixels, no transparent margins)
+    if (isMinimized) {
+      if (lastIgnoreRef.current !== false) {
+        lastIgnoreRef.current = false;
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+      return;
     }
-    return;
 
-    /*
     // Blur and focus handlers: we MUST turn off ignore mouse events (make window clickable)
     // whenever Overdesk is in the background (blurred) so the user can focus on first tap.
     const handleBlur = () => {
@@ -726,8 +728,7 @@ export default function App() {
         } catch (err) {}
       }
     };
-    */
-  }, [isElectron, isMinimized, isActivated]);
+  }, [isElectron, isMinimized, isActivated, isDragging, isResizing, isDraggingMini]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
