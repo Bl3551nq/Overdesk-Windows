@@ -2,6 +2,7 @@
   "name": "overdesk",
   "private": true,
   "version": "1.0.0",
+  "author": "Overdesk",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -62,6 +63,7 @@
       "electron/**/*"
     ],
     "win": {
+      "publisherName": "Overdesk",
       "target": [
         "nsis"
       ],
@@ -78,8 +80,8 @@
       "entitlementsInherit": "electron/entitlements.mac.plist"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "Overdesk",
