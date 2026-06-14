@@ -624,106 +624,110 @@ export default function App() {
     };
   }, [isElectron, isMinimized, isActivated, cardWidth, panelScale]);
 
-  // Toggle ignoring click-through on transparent padding space outside the app card in Electron
+  // Robust and clickable window states in Electron: kept fully interactive at all times
   useEffect(() => {
     if (!isElectron || !isActivated) return;
 
-    if (isMinimized) {
-      const handleMinimizedMouseMove = (e: MouseEvent) => {
-        if (isDraggingMini) {
-          if (lastIgnoreRef.current !== false) {
-            lastIgnoreRef.current = false;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(false);
-            } catch (err) {}
-          }
-          return;
-        }
-
-        const dx = e.clientX - 40;
-        const dy = e.clientY - 40;
-        const isInsideCircle = (dx * dx + dy * dy) <= 25 * 25;
-
-        if (isInsideCircle) {
-          if (lastIgnoreRef.current !== false) {
-            lastIgnoreRef.current = false;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(false);
-            } catch (err) {}
-          }
-        } else {
-          if (lastIgnoreRef.current !== true) {
-            lastIgnoreRef.current = true;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
-            } catch (err) {}
-          }
-        }
-      };
-
-      window.addEventListener('mousemove', handleMinimizedMouseMove);
-      return () => {
-        window.removeEventListener('mousemove', handleMinimizedMouseMove);
-        if (isElectron) {
-          try {
-            (window as any).electronAPI.setIgnoreMouseEvents(false);
-          } catch (err) {}
-        }
-      };
-    } else {
-      const handleWindowMouseMove = (e: MouseEvent) => {
-        if (isDragging || isResizing || isDraggingMini) {
-          if (lastIgnoreRef.current !== false) {
-            lastIgnoreRef.current = false;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(false);
-            } catch (err) {}
-          }
-          return;
-        }
-
-        const cardEl = cardRef.current;
-        if (!cardEl) return;
-
-        const rect = cardEl.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-
-        const isInside = (
-          x >= rect.left &&
-          x <= rect.right &&
-          y >= rect.top &&
-          y <= rect.bottom
-        );
-
-        if (isInside) {
-          if (lastIgnoreRef.current !== false) {
-            lastIgnoreRef.current = false;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(false);
-            } catch (err) {}
-          }
-        } else {
-          if (lastIgnoreRef.current !== true) {
-            lastIgnoreRef.current = true;
-            try {
-              (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
-            } catch (err) {}
-          }
-        }
-      };
-
-      window.addEventListener('mousemove', handleWindowMouseMove);
-      return () => {
-        window.removeEventListener('mousemove', handleWindowMouseMove);
-        if (isElectron) {
-          try {
-            (window as any).electronAPI.setIgnoreMouseEvents(false);
-          } catch (err) {}
-        }
-      };
+    if (lastIgnoreRef.current !== false) {
+      lastIgnoreRef.current = false;
+      try {
+        (window as any).electronAPI.setIgnoreMouseEvents(false);
+      } catch (err) {}
     }
-  }, [isElectron, isMinimized, isActivated, isDragging, isResizing, isDraggingMini]);
+    return;
+
+    /*
+    // Blur and focus handlers: we MUST turn off ignore mouse events (make window clickable)
+    // whenever Overdesk is in the background (blurred) so the user can focus on first tap.
+    const handleBlur = () => {
+      if (lastIgnoreRef.current !== false) {
+        lastIgnoreRef.current = false;
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+    };
+
+    const handleFocus = () => {
+      if (lastIgnoreRef.current !== false) {
+        lastIgnoreRef.current = false;
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      // If we are currently executing a drag or resize, ensure the entire window is interactive
+      if (isDragging || isResizing || isDraggingMini) {
+        if (lastIgnoreRef.current !== false) {
+          lastIgnoreRef.current = false;
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(false);
+          } catch (err) {}
+        }
+        return;
+      }
+
+      // If window is currently blurred, bypass click-through to stay clickable for focusing
+      if (!document.hasFocus()) {
+        if (lastIgnoreRef.current !== false) {
+          lastIgnoreRef.current = false;
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(false);
+          } catch (err) {}
+        }
+        return;
+      }
+
+      const cardEl = cardRef.current;
+      if (!cardEl) return;
+
+      const rect = cardEl.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+
+      const isInside = (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      );
+
+      if (isInside) {
+        if (lastIgnoreRef.current !== false) {
+          lastIgnoreRef.current = false;
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(false);
+          } catch (err) {}
+        }
+      } else {
+        if (lastIgnoreRef.current !== true) {
+          lastIgnoreRef.current = true;
+          try {
+            (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
+          } catch (err) {}
+        }
+      }
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      if (isElectron) {
+        try {
+          (window as any).electronAPI.setIgnoreMouseEvents(false);
+        } catch (err) {}
+      }
+    };
+    */
+  }, [isElectron, isMinimized, isActivated]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {

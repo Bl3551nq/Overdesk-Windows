@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
@@ -68,11 +68,17 @@ function createTray() {
           mainWindow.restore();
           mainWindow.show();
           mainWindow.focus();
+          try {
+            mainWindow.setAlwaysOnTop(true, 'screen-saver');
+          } catch (err) {}
         } else if (mainWindow.isVisible()) {
           mainWindow.hide();
         } else {
           mainWindow.show();
           mainWindow.focus();
+          try {
+            mainWindow.setAlwaysOnTop(true, 'screen-saver');
+          } catch (err) {}
         }
       }
     });
@@ -181,10 +187,31 @@ function createWindow() {
     }
   });
 
-  // Intercept minimize events to hide to tray/system-bar instead of staying in the OS taskbar/dock
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault();
-    mainWindow.hide();
+  // Clear click-through ignore mode when window loses focus so the user can focus it on the first click
+  mainWindow.on('blur', () => {
+    try {
+      mainWindow.setIgnoreMouseEvents(false);
+    } catch (err) {}
+  });
+
+  mainWindow.on('focus', () => {
+    try {
+      mainWindow.setIgnoreMouseEvents(false);
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    } catch (err) {}
+  });
+
+  mainWindow.on('restore', () => {
+    try {
+      mainWindow.setIgnoreMouseEvents(false);
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    } catch (err) {}
+  });
+
+  mainWindow.on('minimize', () => {
+    try {
+      mainWindow.setIgnoreMouseEvents(false);
+    } catch (err) {}
   });
 
   mainWindow.on('closed', () => {
@@ -193,6 +220,24 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Auto-approve media (microphone) permissions so voice recognition works flawlessly out of the box
+  if (session && session.defaultSession) {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      if (permission === 'media') {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    });
+
+    session.defaultSession.setPermissionCheckHandler((webContents, permission, origin) => {
+      if (permission === 'media') {
+        return true;
+      }
+      return false;
+    });
+  }
+
   createWindow();
   createTray();
 
@@ -200,6 +245,9 @@ app.whenReady().then(() => {
     if (mainWindow) {
       mainWindow.show();
       mainWindow.focus();
+      try {
+        mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      } catch (err) {}
     } else if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
@@ -263,8 +311,16 @@ let isCustomDragging = false;
 let customDragInterval = null;
 
 ipcMain.on('window-drag-start', (event) => {
-  if (isCustomDragging) return;
   if (!mainWindow) return;
+
+  // Use native operating system dragging for buttery smooth, zero-latency window manipulation (Windows & macOS)
+  if (typeof mainWindow.performDrag === 'function') {
+    mainWindow.performDrag();
+    return;
+  }
+
+  // Fallback custom interval-based dragging if performDrag is not supported (e.g., standard Linux)
+  if (isCustomDragging) return;
   isCustomDragging = true;
   
   const cursorStart = screen.getCursorScreenPoint();
