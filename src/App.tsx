@@ -180,6 +180,7 @@ export default function App() {
   // Dragging Card
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const lastDragCoords = useRef({ x: 0, y: 0 });
 
   // Resizing Card
   const [isResizing, setIsResizing] = useState(false);
@@ -628,17 +629,6 @@ export default function App() {
   useEffect(() => {
     if (!isElectron || !isActivated) return;
 
-    // Direct click-through bypass for minimized state (window is exactly 80x80 pixels, no transparent margins)
-    if (isMinimized) {
-      if (lastIgnoreRef.current !== false) {
-        lastIgnoreRef.current = false;
-        try {
-          (window as any).electronAPI.setIgnoreMouseEvents(false);
-        } catch (err) {}
-      }
-      return;
-    }
-
     // Blur and focus handlers: we MUST turn off ignore mouse events (make window clickable)
     // whenever Overdesk is in the background (blurred) so the user can focus on first tap.
     const handleBlur = () => {
@@ -681,6 +671,32 @@ export default function App() {
           try {
             (window as any).electronAPI.setIgnoreMouseEvents(false);
           } catch (err) {}
+        }
+        return;
+      }
+
+      // Check minimized circular icon bounds first (width: 80px, height: 80px window viewport)
+      if (isMinimized) {
+        const dx = e.clientX - 40;
+        const dy = e.clientY - 40;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Inside the 24px-radius target red circle, we accept clicks. Outside (corners), we click-through.
+        const isInsideCircle = dist <= 24;
+
+        if (isInsideCircle) {
+          if (lastIgnoreRef.current !== false) {
+            lastIgnoreRef.current = false;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(false);
+            } catch (err) {}
+          }
+        } else {
+          if (lastIgnoreRef.current !== true) {
+            lastIgnoreRef.current = true;
+            try {
+              (window as any).electronAPI.setIgnoreMouseEvents(true, { forward: true });
+            } catch (err) {}
+          }
         }
         return;
       }
@@ -797,15 +813,36 @@ export default function App() {
     }
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
-    dragOffset.current = {
-      x: e.clientX - posX,
-      y: e.clientY - posY,
-    };
+    if (isElectron) {
+      lastDragCoords.current = {
+        x: e.screenX,
+        y: e.screenY,
+      };
+    } else {
+      dragOffset.current = {
+        x: e.clientX - posX,
+        y: e.clientY - posY,
+      };
+    }
     warmAudioContext();
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
+    if (isElectron) {
+      const dx = e.screenX - lastDragCoords.current.x;
+      const dy = e.screenY - lastDragCoords.current.y;
+      if (dx !== 0 || dy !== 0) {
+        try {
+          (window as any).electronAPI.moveWindowByDelta(dx, dy);
+        } catch (err) {}
+        lastDragCoords.current = {
+          x: e.screenX,
+          y: e.screenY,
+        };
+      }
+      return;
+    }
     const cardH = cardRef.current?.offsetHeight || 220;
     const rawX = e.clientX - dragOffset.current.x;
     const rawY = e.clientY - dragOffset.current.y;
@@ -827,7 +864,10 @@ export default function App() {
     setPosY(clampedY);
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     setIsDragging(false);
   };
 
@@ -1122,12 +1162,10 @@ export default function App() {
         onPointerOver={activateInteraction}
         onPointerDown={(e) => {
           activateInteraction();
-          if (!isElectron) {
-            handlePointerDown(e);
-          }
+          handlePointerDown(e);
         }}
-        onPointerMove={isElectron ? undefined : handlePointerMove}
-        onPointerUp={isElectron ? undefined : handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
       >
         {/* Left Side Resize Handle */}
         <div
