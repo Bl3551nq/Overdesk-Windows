@@ -280,6 +280,37 @@ export default function App() {
     };
   }, [isElectron]);
 
+  // Listen for restore events from Electron main process
+  useEffect(() => {
+    if (!isElectron) return;
+    let unsubscribeRestore: (() => void) | undefined;
+    try {
+      if ((window as any).electronAPI?.onAppRestore) {
+        unsubscribeRestore = (window as any).electronAPI.onAppRestore(() => {
+          setIsMinimized(false);
+          // Directly resize window to restore full size
+          try {
+            (window as any).electronAPI.resizeWindow(Math.round((cardWidth + 120) * panelScale), Math.round(520 * panelScale));
+          } catch (err) {}
+        });
+      }
+    } catch (err) {
+      console.error('Failed to subscribe to app-restore events:', err);
+    }
+    return () => {
+      if (unsubscribeRestore) unsubscribeRestore();
+    };
+  }, [isElectron, cardWidth, panelScale]);
+
+  // Synchronize minimized state to Electron main process
+  useEffect(() => {
+    if (isElectron && (window as any).electronAPI?.setMinimizedState) {
+      try {
+        (window as any).electronAPI.setMinimizedState(isMinimized);
+      } catch (err) {}
+    }
+  }, [isMinimized, isElectron]);
+
   // Active task queue
   const queue = buildQueue();
 

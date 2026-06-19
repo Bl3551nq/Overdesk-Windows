@@ -20,5 +20,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('updater-downloaded', subscription);
     return () => ipcRenderer.off('updater-downloaded', subscription);
   },
+  onAppRestore: (callback) => {
+    const subscription = () => callback();
+    ipcRenderer.on('app-restore', subscription);
+    return () => ipcRenderer.off('app-restore', subscription);
+  },
   restartToUpdate: () => ipcRenderer.send('restart-to-update'),
 });

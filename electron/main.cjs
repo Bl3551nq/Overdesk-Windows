@@ -12,6 +12,9 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
+      try {
+        mainWindow.webContents.send('app-restore');
+      } catch (err) {}
     }
   });
 }
@@ -27,6 +30,7 @@ const PRODUCTION_REMOTE_URL = 'https://ais-pre-ygovsfhsdgrmphae242d6v-5792626695
 
 let mainWindow;
 let tray = null;
+let isBubbleState = false;
 
 function createTray() {
   const iconPath = path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png');
@@ -39,6 +43,9 @@ function createTray() {
           if (mainWindow) {
             mainWindow.show();
             mainWindow.focus();
+            try {
+              mainWindow.webContents.send('app-restore');
+            } catch (err) {}
           }
         } 
       },
@@ -69,13 +76,25 @@ function createTray() {
           mainWindow.show();
           mainWindow.focus();
           try {
+            mainWindow.webContents.send('app-restore');
+          } catch (err) {}
+          try {
             mainWindow.setAlwaysOnTop(true, 'screen-saver');
           } catch (err) {}
         } else if (mainWindow.isVisible()) {
-          mainWindow.hide();
+          if (isBubbleState) {
+            try {
+              mainWindow.webContents.send('app-restore');
+            } catch (err) {}
+          } else {
+            mainWindow.hide();
+          }
         } else {
           mainWindow.show();
           mainWindow.focus();
+          try {
+            mainWindow.webContents.send('app-restore');
+          } catch (err) {}
           try {
             mainWindow.setAlwaysOnTop(true, 'screen-saver');
           } catch (err) {}
@@ -205,6 +224,9 @@ function createWindow() {
     try {
       mainWindow.setIgnoreMouseEvents(false);
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      try {
+        mainWindow.webContents.send('app-restore');
+      } catch (err) {}
     } catch (err) {}
   });
 
@@ -263,6 +285,10 @@ app.on('window-all-closed', () => {
 // Window controls IPC handling
 ipcMain.on('window-minimize', () => {
   if (mainWindow) mainWindow.hide();
+});
+
+ipcMain.on('window-set-minimized-state', (event, minimized) => {
+  isBubbleState = minimized;
 });
 
 ipcMain.on('window-close', () => {
