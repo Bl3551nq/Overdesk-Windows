@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
 
 // Enforce single instance lock to prevent duplicate backend processes and enable taskbar restoration
 const gotTheLock = app.requestSingleInstanceLock();
@@ -437,4 +440,141 @@ app.whenReady().then(() => {
     });
   }, 4 * 60 * 60 * 1000);
 });
+
+// ══ GUMROAD LICENSE ACTIVATION MACHINE ENFORCEMENT ══
+
+function getMachineId() {
+  const raw = [
+    os.hostname(),
+    os.platform(),
+    os.arch(),
+    os.cpus()[0]?.model || '',
+    os.totalmem(),
+  ].join('|');
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+const ENCRYPTION_KEY = crypto.scryptSync('overdesk-license-key-encryption-secret', 'salt', 32);
+const IV_LENGTH = 16;
+
+function encrypt(text) {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text) {
+  const textParts = text.split(':');
+  if (textParts.length < 2) throw new Error('Invalid encrypted format');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
+function getLicenseFilePath() {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'license.enc');
+}
+
+function getStoredLicenseData() {
+  const licenseFilePath = getLicenseFilePath();
+  try {
+    if (fs.existsSync(licenseFilePath)) {
+      const encryptedData = fs.readFileSync(licenseFilePath, 'utf8');
+      const decryptedData = decrypt(encryptedData);
+      return JSON.parse(decryptedData);
+    }
+  } catch (err) {
+    console.error('Failed to read or decrypt license file:', err);
+  }
+  return {};
+}
+
+function storeLicenseData(licenseKey, machineId) {
+  const licenseFilePath = getLicenseFilePath();
+  try {
+    const existing = getStoredLicenseData();
+    existing[licenseKey] = machineId;
+    const encryptedData = encrypt(JSON.stringify(existing));
+    fs.writeFileSync(licenseFilePath, encryptedData, 'utf8');
+  } catch (err) {
+    console.error('Failed to write license file:', err);
+  }
+}
+
+async function validateLicenseHandler(event, licenseKey) {
+  if (!licenseKey) {
+    return { ok: false, error: 'License key is required.' };
+  }
+
+  const currentMachineId = getMachineId();
+  const storedData = getStoredLicenseData();
+  const storedMachineId = storedData ? storedData[licenseKey] : null;
+
+  // Always call Gumroad with increment_uses_count: false after the first activation so the count stays at 1 and is only used as a flag
+  const incrementUsesCount = !storedMachineId;
+
+  try {
+    const params = new URLSearchParams();
+    params.append('product_permalink', 'app');
+    params.append('license_key', licenseKey);
+    params.append('increment_uses_count', incrementUsesCount ? 'true' : 'false');
+
+    const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      return { ok: false, error: data.message || 'The license key is invalid or expired.' };
+    }
+
+    // If data.purchase.refunded === true, return { ok: false, error: 'This license has been refunded and is no longer valid.' }
+    if (data.purchase && data.purchase.refunded === true) {
+      return { ok: false, error: 'This license has been refunded and is no longer valid.' };
+    }
+
+    const uses = data.uses || 0;
+
+    // If uses > 1 AND the stored machine ID does not match the current machine ID, return error
+    if (uses > 1 && storedMachineId && storedMachineId !== currentMachineId) {
+      return {
+        ok: false,
+        error: 'This license key is already activated on another device. Contact support to transfer.'
+      };
+    }
+
+    // If uses === 1 OR the machine ID matches, return { ok: true }
+    if (uses === 1 || storedMachineId === currentMachineId) {
+      if (!storedMachineId) {
+        storeLicenseData(licenseKey, currentMachineId);
+      }
+      return { ok: true };
+    }
+
+    // Default fallback if uses > 1 but we somehow didn't have storedMachineId yet and it shouldn't be blocked, 
+    // or any other edge case:
+    if (!storedMachineId) {
+      storeLicenseData(licenseKey, currentMachineId);
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('License validation failed:', err);
+    return { ok: false, error: 'Network verification failed. Please check your connection or try again.' };
+  }
+}
+
+// Register hooks
+ipcMain.handle('validateLicense', validateLicenseHandler);
+ipcMain.handle('validate-license', validateLicenseHandler);
 
